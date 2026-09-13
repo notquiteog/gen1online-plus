@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.1] - 2026-09-13 - Johto Diorama fork: ask-for-server, sealed-cart scoped sync
+
+Forked from gamecorner-033/Gen1Online v0.5.0 (tag and manifest agree at
+0.5.0; this fork releases as 0.5.1). Three changes, no gameplay edits:
+
+- **The server is always asked for.** CONNECT opens a server address prompt
+  (typed, keyboard or gamepad), prefilled with the last address (mod
+  storage, then gts_config.txt, then the shipped default) and nothing
+  connects until it is confirmed. The chosen address normalizes, persists,
+  and wins for the whole session. The old read-only "current server" box is
+  now the same live editor.
+- **Sync is scoped to the sealed cart.** Every request stamps the running
+  cart's id plus a fingerprint of its pin list (read from the engine's own
+  cart report, so any future quest mod changes the scope automatically). A
+  cart-aware server shows you only players from the same sealed cart;
+  peers without a hash (unpatched servers) keep the old open behaviour.
+- **tools/gts_server.py** is the self-hostable backend, patched to store
+  the cart scope per player, scope map visibility to same-cart peers, and
+  refuse challenges across carts, plus a /server/info endpoint. MOD_VERSION
+  stays 0.5.0, so the official server's version handshake still accepts
+  this build.
+
 ## [0.5.0] - 2026-08-27
 
 ### Added
