@@ -7306,5 +7306,11 @@ return function(mod)
     end)
   end
 
+  -- Late exports: the connect entry point exists only after its locals are
+  -- assigned, so test drivers and integrators can run the real flow.
+  if mod.exports then
+    mod.exports.connect = function(game) handleConnectToServer(game) end
+  end
+
   print("[Gen1Online+] Asynchronous Threaded 60FPS Multiplayer Mod initialized successfully.")
 end
