@@ -104,3 +104,16 @@ The mod supports loading true-color overworld follower sprite sheets directly fr
 - **MMO Architecture Foundation**: **alamops** ([alamops/RBYMMOMod](https://github.com/alamops/RBYMMOMod))
 - **PotatoVoxel 3D Diorama Bridge**: **ShaneMcGovernIE** ([ShaneMcGovernIE/potato_voxel](https://github.com/ShaneMcGovernIE/potato_voxel))
 - **PokéGear Cards Expansion**: **1Jamie** ([1Jamie/pokegear_cards](https://github.com/1Jamie/pokegear_cards))
+
+## Crystal 2v2 PVP (roadmap)
+
+PVP battles already run on the engine's own Gen 2 battle sim
+(`src/battle/gen2/Battle.lua` via `pvp/engine.lua`). The companion fork
+[double-battles-gen2](https://github.com/notquiteog/double-battles-gen2)
+provides the 2v2 layer over that same sim (`lib/doubles2.lua`: two actives
+a side, four-actor speed ordering, per-slot targeting, faint collapse).
+Wiring PVP to 2v2 means: both clients field two actives, the lockstep
+protocol carries per-slot actions and targets, and the party payload
+grows to four — a protocol change that requires both sides on this build,
+which the sealed-cart scoping in this same fork already guarantees (same
+cart, same room, same build). Planned for the next fork release.
