@@ -1,0 +1,15 @@
+tests/pawn_test.lua
+tests/arcade_rules_test.lua
+# Server files live in server/gen1online (outside the mod) and must NEVER be
+# packed or zipped into a player-facing release.
+gts_server.py
+gts_admin.py
+Dockerfile
+gts_database.json
+players_backup.json
+private_ip_ledger.json
+server_secrets.json
+# Distribution artifacts are produced from this folder and must not nest inside
+# a rebuilt archive (they are the output, not the source).
+mod.zip
+*.modpkg

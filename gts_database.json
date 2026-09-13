@@ -1,0 +1,82 @@
+{
+  "listings": {},
+  "user_counts": {},
+  "history": [],
+  "claim_boxes": {},
+  "profiles": {
+    "470132": {
+      "trainerId": "470132",
+      "name": "BJK",
+      "title": "ACE TRAINER",
+      "badges": 0,
+      "pokedexCount": 0,
+      "gtsTrades": 0,
+      "pvpWins": 0,
+      "favoriteMon": "CHARIZARD",
+      "timestamp": 1786493190,
+      "blackouts": 0
+    },
+    "38415": {
+      "trainerId": "38415",
+      "name": "BK",
+      "title": "ACE TRAINER",
+      "badges": 0,
+      "pokedexCount": 0,
+      "gtsTrades": 0,
+      "pvpWins": 0,
+      "favoriteMon": "CHARIZARD",
+      "timestamp": 1787613109,
+      "blackouts": 0
+    },
+    "439486": {
+      "trainerId": "439486",
+      "name": "LLL",
+      "spriteId": "SPRITE_BLUE",
+      "title": "ACE TRAINER",
+      "level": 1,
+      "xp": 0,
+      "badges": 0,
+      "pokedexCount": 0,
+      "favoriteMon": "CHARIZARD",
+      "lastSeen": 1787613127,
+      "blackouts": 0,
+      "pvpWins": 0,
+      "timestamp": 1787613219
+    }
+  },
+  "accounts": {
+    "439486": {
+      "trainerId": "439486",
+      "name": "LLL",
+      "spriteId": "SPRITE_BLUE",
+      "level": 1,
+      "xp": 0,
+      "token": "6FCA48E9",
+      "badges": 0,
+      "pokedexCount": 0,
+      "wildBattles": 0,
+      "trainerBattles": 0,
+      "pvpWins": 0,
+      "pvpLosses": 0,
+      "breedingCount": 0,
+      "title": "ACE TRAINER",
+      "favoriteMon": "PIKACHU",
+      "isBanned": false,
+      "createdAt": 1787613127,
+      "lastSeen": 1787613127,
+      "blackoutCount": 0
+    }
+  },
+  "chat": [],
+  "banned_trainers": {},
+  "parties": {},
+  "player_parties": {},
+  "pending_party_invites": {},
+  "party_messages": {},
+  "party_xp_events": {},
+  "battle_log": [],
+  "quest_log": [],
+  "next_id": 1001,
+  "species_battled": {},
+  "species_caught": {}
+}
