@@ -889,13 +889,65 @@ class GTSHandler(http.server.BaseHTTPRequestHandler):
         else:
             self._send_json({"error": "Unknown action"}, status=400)
 
+def local_addresses():
+    """Every LAN address this machine answers on, loopback last."""
+    addrs = []
+    try:
+        import socket
+        host = socket.gethostname()
+        for info in socket.getaddrinfo(host, None, socket.AF_INET):
+            ip = info[4][0]
+            if ip not in addrs and not ip.startswith("127."):
+                addrs.append(ip)
+        # The dial-out trick: opening a UDP "connection" to a public address
+        # picks the default route's local address without sending a packet.
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            if ip not in addrs:
+                addrs.insert(0, ip)
+        finally:
+            s.close()
+    except Exception:
+        pass
+    if not addrs:
+        addrs = ["127.0.0.1"]
+    return addrs
+
+
+def public_address():
+    """The address internet players see, as the outside world sees it."""
+    try:
+        import urllib.request
+        with urllib.request.urlopen(
+                "https://api.ipify.org", timeout=4) as resp:
+            return resp.read().decode("ascii", "ignore").strip()
+    except Exception:
+        return None
+
+
 if __name__ == "__main__":
     load_db()
     server = ThreadedTCPServer(("0.0.0.0", PORT), GTSHandler)
     print(f"============================================================")
     print(f" Gen1Online 24/7 GTS & MMO Server with Leveling & Anti-Cheat")
-    print(f" Port: {PORT} | Cloudflare Ready: YES | Backup: players_backup.json")
+    print(f" Port: {PORT} | Backup: players_backup.json")
     print(f" Active Accounts: {len(db.get('accounts', {}))}")
+    lan = local_addresses()
+    print(f" Connect on your network   : http://{lan[0]}:{PORT}/")
+    for ip in lan[1:]:
+        print(f"   (also answers on        : http://{ip}:{PORT}/)")
+    pub = public_address()
+    if pub:
+        print(f" Connect from the internet : http://{pub}:{PORT}/")
+        print(f"   (remote players also need port {PORT} forwarded to this"
+              f" machine)")
+    else:
+        print(f" Connect from the internet : unreachable to check now"
+              f" (no outbound web access) -- port {PORT} forwarded, or run"
+              f" behind a tunnel")
+    print(f" Players type the address into the game's SERVER ADDRESS prompt.")
     print(f"============================================================")
     try:
         server.serve_forever()

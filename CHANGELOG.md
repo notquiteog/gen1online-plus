@@ -1,3 +1,11 @@
+## [0.5.2] - 2026-09-13 - the server tells you where to connect
+
+- tools/gts_server.py prints the addresses players type into the game's
+  SERVER ADDRESS prompt at startup: the LAN address (default route first,
+  every interface after), and the public address as the outside world sees
+  it, with the port-forward note. The public check degrades gracefully
+  with no outbound web access.
+
 # Changelog
 
 ## [0.5.1] - 2026-09-13 - Johto Diorama fork: ask-for-server, sealed-cart scoped sync
