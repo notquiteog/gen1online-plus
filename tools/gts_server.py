@@ -244,6 +244,12 @@ class GTSHandler(http.server.BaseHTTPRequestHandler):
 
         self_clean_db()
 
+        if self.path.startswith("/server/info"):
+            print("[srv] GET", self.path)
+            self._send_json({"modVersion": "0.5.0", "version": "0.5.0",
+                             "service": "gts_server"})
+            return
+
         if self.path == "/gts/browse" or self.path == "/gts" or self.path == "/":
             self._send_json({
                 "success": True,
@@ -381,6 +387,7 @@ class GTSHandler(http.server.BaseHTTPRequestHandler):
             self._send_json({"error": "Endpoint not found"}, status=404)
 
     def do_POST(self):
+        print("[srv] POST", self.path[:80])
         client_ip = self.get_real_ip()
         if not check_rate_limit(client_ip):
             self._send_json({"error": "RATE LIMIT EXCEEDED"}, status=429)

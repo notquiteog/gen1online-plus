@@ -149,12 +149,18 @@
     return GTS_SERVER_URL
   end
 
+  -- An address the player CONFIRMED on screen wins for the session; the
+  -- config file only supplies defaults (and device-pinned setups keep
+  -- working until they actively change the address).
+  GTS_SERVER_URL_OVERRIDDEN = false
   local function getServerUrl()
-    -- Always re-read config dynamically so editing 1 line in gts_config.txt takes immediate effect
-    local fromFile = readServerUrlFromConfig()
-    if fromFile and #fromFile > 0 then
-      GTS_SERVER_URL = fromFile
-      _G.GTS_SERVER_URL = GTS_SERVER_URL
+    if not GTS_SERVER_URL_OVERRIDDEN then
+      -- Always re-read config dynamically so editing 1 line in gts_config.txt takes immediate effect
+      local fromFile = readServerUrlFromConfig()
+      if fromFile and #fromFile > 0 then
+        GTS_SERVER_URL = fromFile
+        _G.GTS_SERVER_URL = GTS_SERVER_URL
+      end
     end
     return GTS_SERVER_URL
   end
@@ -532,29 +538,48 @@
   -- mods change it automatically -- a different sealed cart is a different
   -- room, and everyone on the same cart stays synced, with no hardcoded
   -- mod list anywhere.
-  local cartSyncInfo, cartSyncInfoRead = nil, false
-  local function getCartSyncInfo()
-    if cartSyncInfoRead then return cartSyncInfo end
-    cartSyncInfoRead = true
-    local ok, SaveData = pcall(require, "src.core.SaveData")
-    local cartId = ok and SaveData and SaveData.getCart and SaveData.getCart() or nil
-    if type(cartId) == "string" and #cartId > 0 then
-      local id, hash = tostring(cartId), nil
-      local okStore, CartStore = pcall(require, "src.carts.CartStore")
-      local cart = okStore and CartStore and CartStore.get and CartStore.get(id) or nil
-      if cart then
-        local okM, CartManifest = pcall(require, "src.carts.CartManifest")
-        if okM and CartManifest and CartManifest.hash then
-          local okH, h = pcall(CartManifest.hash, cart)
-          if okH and type(h) == "string" and #h > 0 then hash = h end
-        end
-      end
-      cartSyncInfo = { id = id, hash = hash or ("unhashed-" .. id) }
-    else
-      cartSyncInfo = { id = "standalone", hash = "standalone-" .. MOD_VERSION }
+  local cartSyncInfo = nil -- nil = not read yet
+  -- FNV-1a over the sorted pin list: stable per cart build, changes the
+  -- moment a quest mod joins the sealed cart. The mod sandbox cannot reach
+  -- SaveData/CartManifest directly (the Gen 2 facade answers those
+  -- requires), but the engine's own cart report carries every pin's
+  -- sha256, so the fingerprint is built from what the report already knows.
+  local function scopeFingerprint(pins)
+    local parts = {}
+    for id, pin in pairs(pins or {}) do
+      parts[#parts + 1] = tostring(id) .. ":" .. tostring(type(pin) == "table" and pin.sha256 or "")
     end
-    print(("[Gen1Online+] cart sync scope: %s (%s)"):format(cartSyncInfo.id, cartSyncInfo.hash:sub(1, 12)))
+    table.sort(parts)
+    -- djb2 over the sorted pin list; every intermediate stays exact in a
+    -- double, so the token is identical across machines and runtimes.
+    local h = 5381
+    for _, part in ipairs(parts) do
+      for i = 1, #part do
+        h = (h * 33 + part:byte(i)) % 4294967296
+      end
+      h = (h * 33 + 31) % 4294967296
+    end
+    return string.format("%08x%08x", h, (#parts * 2654435761) % 4294967296)
+  end
+
+  local function getCartSyncInfo(game)
+    local g = game or currentGame or _G.Game
+    local report = g and g.mods and g.mods.cartReport
+    local cartId = report and report.id
+    if type(cartId) == "string" and #cartId > 0 and report.enforced ~= false then
+      local hash = scopeFingerprint(report.pins)
+      if not cartSyncInfo or cartSyncInfo.id ~= cartId or cartSyncInfo.hash ~= hash then
+        cartSyncInfo = { id = cartId, hash = hash }
+        print(("[Gen1Online+] cart sync scope: %s (%s)")
+          :format(cartSyncInfo.id, cartSyncInfo.hash:sub(1, 12)))
+      end
+      return cartSyncInfo
+    end
+    -- No engine cart context yet (early boot, or a standalone install):
+    -- answer standalone WITHOUT caching, so the first real sync after the
+    -- world is up upgrades this to the sealed cart's own scope.
     return cartSyncInfo
+      or { id = "standalone", hash = "standalone-" .. tostring(MOD_VERSION) }
   end
 
   local function gtsApiGet(path, timeout)
@@ -1210,7 +1235,7 @@
     end
   end
 
-  local syncMultiNetPlayers, startPvpBattle, startLinkTrade, saveOnlineAccount, loadOnlineAccount, syncLocalProfile, performForcedSave, writeOnlineSave, loadOnlineSave, addMmoXp, openOnlineOptionsMenu, openFreshOnlinePlayerMenu, openRedeemTokenMenu, openMyProfileMenu, openServerUrlMenu, openTrainerCardScreen, openMmoLevelInfoScreen, openMmoChatMenu, handleDisconnect, handleConnectToServer, handleConnectToServerConfirmed, applyPlayerSprite
+  local syncMultiNetPlayers, startPvpBattle, startLinkTrade, saveOnlineAccount, loadOnlineAccount, syncLocalProfile, performForcedSave, writeOnlineSave, loadOnlineSave, addMmoXp, openOnlineOptionsMenu, openFreshOnlinePlayerMenu, openRedeemTokenMenu, openMyProfileMenu, openServerUrlMenu, openTrainerCardScreen, openMmoLevelInfoScreen, openMmoChatMenu, handleDisconnect, handleConnectToServer, applyPlayerSprite
 
 
   -- Hook World:interactBody to trigger wild battle on A-press facing wild Pokémon
@@ -2136,53 +2161,61 @@
   -- Normalize + adopt a server address for this session (and persist it as
   -- the next prefill). gts_config.txt still wins when present, so a device
   -- pinned to one server keeps working; everyone else is asked every time.
-  local function normalizeServerUrl(raw)
+  -- URL helpers + the always-ask prompt live on the screen table: this
+  -- file's single scope sits at LuaJIT's 200-local limit, so new surface
+  -- goes on globals alongside ChatInputScreen.
+  function ServerAddressScreen.normalize(raw)
     local url = tostring(raw or ""):gsub("%s+", "")
     if #url == 0 then return nil end
     if not url:match("^https?://") then url = "http://" .. url end
-    if not url:match("^https?://[^/%s]+") then return nil end
+    local authority = url:match("^https?://([^/%s]+)")
+    if not authority or authority:find("://") then return nil end
     return url
   end
-  local function setServerUrl(raw, persist)
-    local url = normalizeServerUrl(raw)
+  function ServerAddressScreen.set(raw, persist)
+    local url = ServerAddressScreen.normalize(raw)
     if not url then return nil end
     GTS_SERVER_URL = url
     _G.GTS_SERVER_URL = url
+    GTS_SERVER_URL_OVERRIDDEN = true
     if persist ~= false then
-      storageWrite("gts_server_url", url)
+      pcall(function() love.filesystem.write("g1oplus_server_url.txt", url) end)
     end
     print("[Gen1Online+] server url set to " .. url)
     return url
   end
-
+  function ServerAddressScreen.storedUrl()
+    local ok, content = pcall(love.filesystem.read, "g1oplus_server_url.txt")
+    if ok and type(content) == "string" and #content > 0 then return content end
+    return nil
+  end
   -- ALWAYS ask which server to join. The last address is only the prefill:
   -- nothing connects until the player confirms the address on screen.
-  local openServerAddressPrompt
-  openServerAddressPrompt = function(game, onConfirm)
+  function ServerAddressScreen.prompt(game, onConfirm)
     loadServerUrl()
-    local prefill = storageRead("gts_server_url") or GTS_SERVER_URL or ""
+    local prefill = ServerAddressScreen.storedUrl() or GTS_SERVER_URL or ""
     game.stack:push(ServerAddressScreen.new(game, {
       default = prefill,
       onDone = function(text)
-        local url = normalizeServerUrl(text)
+        local url = ServerAddressScreen.normalize(text)
         if not url then
           game.stack:push(TextBox.new(game, wrapText("THAT ADDRESS DOES NOT LOOK RIGHT.\nEXAMPLE:\n192.168.1.20:8080  OR\nhttps://my-server.example.com/")))
           return
         end
-        setServerUrl(url)
+        ServerAddressScreen.set(url)
         if onConfirm then onConfirm(url) end
       end,
     }))
   end
 
   -- Integrator/test surface: set or read the server address, read the cart
-  -- sync scope, and read the connect entry point without menu navigation.
+  -- sync scope, and drive the real connect flow without menu navigation.
   if mod.exports then
-    mod.exports.setServerUrl = function(url) return setServerUrl(url) end
+    mod.exports.setServerUrl = function(url) return ServerAddressScreen.set(url) end
     mod.exports.getServerUrl = function() return getServerUrl() end
-    mod.exports.normalizeServerUrl = normalizeServerUrl
+    mod.exports.normalizeServerUrl = ServerAddressScreen.normalize
     mod.exports.cartSyncInfo = getCartSyncInfo
-    mod.exports.openServerAddressPrompt = openServerAddressPrompt
+    mod.exports.openServerAddressPrompt = ServerAddressScreen.prompt
   end
 
   loadServerUrl()
@@ -5611,12 +5644,13 @@
     -- Step 0 is always the same: ASK which server to join. The prefill is
     -- the last address (storage, then gts_config.txt, then the shipped
     -- default) -- a connect never happens silently against a stale URL.
-    openServerAddressPrompt(game, function()
-      handleConnectToServerConfirmed(game)
+    ServerAddressScreen.prompt(game, function()
+      HandleConnectConfirmed(game)
     end)
   end
 
-  handleConnectToServerConfirmed = function(game)
+  -- The original connect flow, one step later than it used to start.
+  HandleConnectConfirmed = function(game)
     -- 0. Enforce Pokemon Crystal Only
     if not isGen2 then
       game.stack:push(TextBox.new(game, wrapText("THE ONLINE SERVER HAS MIGRATED EXCLUSIVELY TO POKEMON CRYSTAL!\nPLEASE LAUNCH POKEMON CRYSTAL TO PLAY ONLINE.")))
@@ -7310,6 +7344,26 @@ return function(mod)
   -- assigned, so test drivers and integrators can run the real flow.
   if mod.exports then
     mod.exports.connect = function(game) handleConnectToServer(game) end
+    -- The confirmed connect body, without the always-ask step: for drivers
+    -- and integrators that already collected the address. Errors surface
+    -- through the returned string instead of a swallowed keypress pcall.
+    mod.exports.probeHttp = function(url)
+      local body = {}
+      local ok, res, code = makeHttpRequest({
+        url = url, method = "GET", timeout = 4.0,
+        sink = function(chunk) if chunk then body[#body + 1] = chunk end end,
+      })
+      return { ok = ok, code = code, body = table.concat(body):sub(1, 80),
+               diag = netDiagReport() }
+    end
+    mod.exports.connectConfirmed = function(game)
+      local ok, err = pcall(HandleConnectConfirmed, game)
+      if not ok then
+        print("[Gen1Online+] connect error: " .. tostring(err))
+        return err
+      end
+      return nil
+    end
   end
 
   print("[Gen1Online+] Asynchronous Threaded 60FPS Multiplayer Mod initialized successfully.")
