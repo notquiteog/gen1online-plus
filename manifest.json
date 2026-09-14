@@ -1,7 +1,7 @@
 {
   "id": "gen1online-plus",
   "name": "Gen1Online+",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "entry": "main.lua",
   "author": "Gamecorner33, martin2844 (Original Blackjack Mod Creator), and Antigravity",
   "description": "Online multiplayer, GTS trading, PVP and casino menus for Pokemon Crystal. The Gen 1 Casino Lounge map is not installed on Crystal.",

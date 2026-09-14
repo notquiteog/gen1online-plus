@@ -1,3 +1,22 @@
+## 0.5.4 — 2026-09-14
+
+Fix the rapidly respawning placeholder Pokémon in towns. The offline encounter
+population now persists for a map visit, claimed encounters stay removed, and
+unknown species/invalid levels cannot become actors. Remove eight corrupted
+rare slots (including landmark aliases) from New Bark and Cherrygrove.
+
+When Wilds provides encounters/followers, it owns the offline population and
+local follower. Server encounters retain their separate connected behavior.
+This avoids duplicate wild spawners and a second local follower in the cart.
+
+Reproduced with the user's copied Linux AppImage profile and its installed
+0.2.60 update: old code repeatedly creates obj_301/302 with species T/M and the
+Charmander placeholder; candidate runs 900 frames without them, preserves the
+ambient Sentret, and asserts one follower after receiving Cyndaquil. The QA
+launcher must dispatch core.update (PlatformHooks.update); the engine's usual
+script driver calls Game:update directly and misses this bug. Pure roster tests
+cover malformed slots, stable identity, consumption and server validation.
+
 ## 0.5.3 — 2026-09-14
 
 Skip Gen 1 Game Corner map-script registration on Crystal. Native Gen 2 has no

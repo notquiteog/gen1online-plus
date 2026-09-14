@@ -36,6 +36,7 @@
   local Quests = {}
   local NPCs = {}
   local GtsUI = {}
+  local EncounterRoster = loadLocal(mod, "other/EncounterRoster.lua")()
   local Wild = { active = {}, tilesCache = {}, latestServer = nil, db = nil, lastMapId = nil }
   local Jobs = {
     registry = {},
@@ -3104,9 +3105,19 @@
     return def, spriteId
   end
 
+  local function wildsOwns(game, feature)
+    local exports = game and game.mods and game.mods.exports
+    local wilds = exports and exports.overworld_wild_spawns
+    if not (wilds and type(wilds.supportsFeature) == "function") then return false end
+    local ok, supported = pcall(wilds.supportsFeature, feature)
+    return ok and supported == true
+  end
+
+  -- Keep one local follower owner when Wilds is installed.
   -- Enable follower spawning whenever player has a lead Pokemon
   if FollowerMod and FollowerMod.setShouldSpawn then
     FollowerMod.setShouldSpawn(function(game, world)
+      if wildsOwns(game, "followers") then return false end
       if not game or not game.save or not game.save.party or #game.save.party == 0 then
         return false
       end
@@ -3120,6 +3131,7 @@
 
   -- Update active follower entity to match lead Pokemon (only updates on actual changes)
   local function updatePlayerFollower(game, world)
+    if wildsOwns(game, "followers") then return end
     if not game or not game.save or not game.save.party or #game.save.party == 0 then return end
     local leadMon = game.save.party[1]
     if not leadMon or not leadMon.species then return end
@@ -3353,6 +3365,7 @@
 
     -- 3. Remove from overworld NPC pool
     Wild.active[encId] = nil
+    EncounterRoster.consume(Wild.localRoster, encId)
     if world.npcs then
       for i = #world.npcs, 1, -1 do
         if world.npcs[i] == npc then
@@ -3398,8 +3411,11 @@
     local mapId = world.map.id
 
     -- On map change, clean up previous wild mons
-    if Wild.lastMapId ~= mapId then
+    if Wild.lastMapId ~= mapId or Wild.world ~= world then
       Wild.lastMapId = mapId
+      Wild.world = world
+      Wild.localRoster = nil
+      Wild.latestServer = nil
       for encId, entry in pairs(Wild.active) do
         if entry.npc and world.npcs then
           for i = #world.npcs, 1, -1 do
@@ -3415,6 +3431,22 @@
       Wild.active = {}
     end
 
+    -- Wilds owns local encounters in the cart. Online server encounters stay
+    -- available when connected; never generate a second offline population.
+    if not isGtsServerConnected and wildsOwns(game, "encounters") then
+      -- A disconnect can happen on the same map. Remove only this spawner's
+      -- old server actors; leave Wilds, ambient NPCs and followers untouched.
+      for _, entry in pairs(Wild.active) do
+        for _, list in ipairs({world.npcs or {}, world.entities or {}}) do
+          for i = #list, 1, -1 do
+            if list[i] == entry.npc then table.remove(list, i) end
+          end
+        end
+      end
+      Wild.active, Wild.localRoster = {}, nil
+      return
+    end
+
     -- Load encounter database
     local db = loadEncounterTablesDb()
     local mapConfig = db[mapId] or db["LANDMARK_" .. mapId]
@@ -3428,42 +3460,16 @@
     if #grassTiles == 0 then return end
 
     -- Determine target encounters (from server or offline local generator)
-    local targetList = Wild.latestServer
-    if not targetList or #targetList == 0 then
-      -- Offline Local Encounter Generator
-      local tod = "DAY"
-      local hour = os.date("*t").hour
-      if hour >= 4 and hour < 10 then tod = "MORN"
-      elseif hour >= 18 or hour < 4 then tod = "NITE" end
-
-      local slots = (mapConfig.grass and (mapConfig.grass[tod] or mapConfig.grass.DAY or mapConfig.grass.NITE)) or {}
-      local rareSlots = mapConfig.rare_ow or {}
-      targetList = {}
-      local targetCount = math.min(6, math.max(3, math.floor(#grassTiles / 4)))
-
-      for idx = 1, targetCount do
-        local slot = nil
-        local isRare = (#rareSlots > 0 and math.random(1, 100) <= 15)
-        if isRare then
-          slot = rareSlots[math.random(1, #rareSlots)]
-        elseif #slots > 0 then
-          slot = slots[math.random(1, #slots)]
-        end
-
-        if slot then
-          local minL = tonumber(slot.minLevel) or 2
-          local maxL = tonumber(slot.maxLevel) or minL
-          if maxL < minL then minL, maxL = maxL, minL end
-          local lvl = math.random(minL, maxL)
-          local isShiny = (math.random(1, isRare and 512 or 8192) == 1)
-          table.insert(targetList, {
-            id = string.format("local_%s_%d", mapId, idx),
-            species = slot.species or "PIDGEY",
-            level = lvl,
-            shiny = isShiny
-          })
-        end
+    local targetList
+    if isGtsServerConnected then
+      targetList = EncounterRoster.validTargets(Wild.latestServer, game.data.pokemon)
+    else
+      local tod = world.timeOfDayId and world:timeOfDayId() or "DAY"
+      if not Wild.localRoster then
+        Wild.localRoster = EncounterRoster.generate(mapId, mapConfig, tod,
+          #grassTiles, game.data.pokemon, math.random)
       end
+      targetList = Wild.localRoster
     end
 
     -- Clean up stale encounters not in target list

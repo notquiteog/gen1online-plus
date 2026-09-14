@@ -8,20 +8,7 @@
       "DAY": [],
       "NITE": []
     },
-    "rare_ow": [
-      {
-        "species": "T",
-        "minLevel": "O",
-        "maxLevel": "G",
-        "chance": "E"
-      },
-      {
-        "species": "M",
-        "minLevel": "A",
-        "maxLevel": "R",
-        "chance": "I"
-      }
-    ],
+    "rare_ow": [],
     "water": [
       {
         "species": "TENTACOOL",
@@ -60,20 +47,7 @@
       "DAY": [],
       "NITE": []
     },
-    "rare_ow": [
-      {
-        "species": "T",
-        "minLevel": "O",
-        "maxLevel": "G",
-        "chance": "E"
-      },
-      {
-        "species": "M",
-        "minLevel": "A",
-        "maxLevel": "R",
-        "chance": "I"
-      }
-    ],
+    "rare_ow": [],
     "water": [
       {
         "species": "TENTACOOL",
@@ -386,20 +360,7 @@
       "DAY": [],
       "NITE": []
     },
-    "rare_ow": [
-      {
-        "species": "C",
-        "minLevel": "O",
-        "maxLevel": "R",
-        "chance": "S"
-      },
-      {
-        "species": "S",
-        "minLevel": "T",
-        "maxLevel": "A",
-        "chance": "R"
-      }
-    ],
+    "rare_ow": [],
     "water": [
       {
         "species": "TENTACOOL",
@@ -438,20 +399,7 @@
       "DAY": [],
       "NITE": []
     },
-    "rare_ow": [
-      {
-        "species": "C",
-        "minLevel": "O",
-        "maxLevel": "R",
-        "chance": "S"
-      },
-      {
-        "species": "S",
-        "minLevel": "T",
-        "maxLevel": "A",
-        "chance": "R"
-      }
-    ],
+    "rare_ow": [],
     "water": [
       {
         "species": "TENTACOOL",
