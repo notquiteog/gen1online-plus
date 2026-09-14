@@ -1,3 +1,10 @@
+## 0.5.3 — 2026-09-14
+
+Skip Gen 1 Game Corner map-script registration on Crystal. Native Gen 2 has no
+target for that registry. Online services and casino menus remain available;
+this release does not port the Casino Lounge map. Native Crystal companion
+loader check passes alongside the full cart set.
+
 ## [0.5.2] - 2026-09-13 - the server tells you where to connect
 
 - tools/gts_server.py prints the addresses players type into the game's

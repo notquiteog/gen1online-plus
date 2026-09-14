@@ -7314,7 +7314,10 @@ return function(mod)
     UI.openAfterMessage(game, message, screen, done)
   end
 
-  if mod.content and mod.content.map_scripts and mod.content.map_scripts.register then
+  -- This registry and these text IDs belong to the Gen 1 Game Corner.
+  -- Crystal uses native event scripts; its online services and casino menus
+  -- do not need this incompatible map registration.
+  if not isGen2 and mod.content and mod.content.map_scripts and mod.content.map_scripts.register then
     pcall(function()
       mod.content.map_scripts:register("GAME_CORNER", { talk = {
         TEXT_GAMECORNER_CLERK1 = UI.coinClerk,
