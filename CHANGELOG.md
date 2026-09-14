@@ -1,3 +1,10 @@
+## 0.5.5 — 2026-09-14
+
+Correct standalone offline encounter selection for Crystal's numeric time-of-day
+IDs. Morning and night now select their own slots; darkness uses night slots.
+Regression coverage checks all four numeric IDs and named equivalents. The
+cart still delegates its offline encounters to Wilds.
+
 ## 0.5.4 — 2026-09-14
 
 Fix the rapidly respawning placeholder Pokémon in towns. The offline encounter

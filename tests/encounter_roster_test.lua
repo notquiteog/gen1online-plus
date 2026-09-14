@@ -24,4 +24,14 @@ assert(#roster==5 and roster[1]~=first,'claimed local encounter stays removed')
 local targets=R.validTargets({{id='bad',species='T',level=2},
  {id='nan',species='SENTRET',level=0/0},first,first},species)
 assert(#targets==1 and targets[1]==first)
+local timed={grass={
+ MORN={{species='TOGEPI',minLevel=2,maxLevel=2}},
+ DAY={{species='SENTRET',minLevel=3,maxLevel=3}},
+ NITE={{species='MARILL',minLevel=4,maxLevel=4}},
+}}
+for tod,expected in pairs({[0]='TOGEPI',[1]='SENTRET',[2]='MARILL',[3]='MARILL',
+ MORN='TOGEPI',DAY='SENTRET',NITE='MARILL',DARK='MARILL'}) do
+ local population=R.generate('TEST',timed,tod,40,species,random)
+ assert(#population==6 and population[1].species==expected,'wrong time-of-day population')
+end
 print('encounter roster: malformed town data, persistent identity, claims, server validation PASS')

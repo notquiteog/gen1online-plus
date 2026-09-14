@@ -23,6 +23,9 @@ end
 function R.generate(mapId, config, tod, tileCount, speciesData, random)
   local result = {}
   local grass = config.grass or {}
+  -- Crystal's World:timeOfDayId returns ROM IDs, while imported tables use
+  -- names. Darkness uses the night encounter slots, as the engine does.
+  tod = ({[0]='MORN', [1]='DAY', [2]='NITE', [3]='NITE', DARK='NITE'})[tod] or tod
   local common = slots(grass[tod] or grass.DAY or grass.NITE, speciesData)
   local rare = slots(config.rare_ow, speciesData)
   if #common == 0 and #rare == 0 then return result end
