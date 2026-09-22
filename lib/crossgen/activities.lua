@@ -26,6 +26,7 @@ return function(S,adapter,send)
   local function begin()
     local a=S.activity;if not a then return end
     a.status='active';A.elapsed=0
+    if S.ui then S.ui.close()end
     local ok,why=adapter.startActivity(a.mode,S.channel(a.id),S.host,function(result)
       -- A native trade animation may finish after its room disconnected.
       -- Its callback must never complete a new room's unrelated invitation.

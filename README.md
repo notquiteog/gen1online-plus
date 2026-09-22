@@ -1,3 +1,9 @@
+**0.7.0: Synchronized rides and Crystal online doubles.** Synchronizes optional Dramatic Ride mounts, riders, direction, movement and flight height. Adds optional Crystal online doubles over native cloned-party link battles with paired actions and turn verification. Prevents the room menu from interrupting battle setup.
+
+Known limits: Gen 1 online doubles remain unavailable. The full mixed-mod and disconnect matrix is not certified.
+
+Requires Gen1Recomp 0.3.1 for the verified Gen 3 path. Other mods are optional; no ROM, player save or import cache is included.
+
 **0.6.0: Cross-generation rooms and host-owned encounters.** Adds persistent two-player rooms, overworld presence, chat bubbles, walk-up native singles and trading across Gen 1, Crystal and Gen 3, plus native Gen 3 online doubles. Optional Wilds integration gives the host ownership of shared visible encounters, including guest-only maps.
 
 Gen 1/2 online doubles are not implemented. Shared overworld ball throwing is disabled; native battle catching remains available. The full disconnect and mixed-mod matrix is still pending. Earlier two-client activity testing used engine 0.2.73; current packaged-cart smoke testing is separate.

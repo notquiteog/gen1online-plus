@@ -12,8 +12,13 @@ return function(mod, loadLocal, adapter)
     if type(p)~='table' or not validToken(p.map) or not finite(p.x) or not finite(p.y)
       or not finite(p.px) or not finite(p.py) then return end
     if p.facing~='up' and p.facing~='down' and p.facing~='left' and p.facing~='right' then return end
-    return {map=p.map,x=p.x,y=p.y,px=p.px,py=p.py,facing=p.facing,
-      moving=p.moving==true,busy=p.busy==true,graphics=p.graphics,name=tostring(p.name or 'TRAINER'):sub(1,16)}
+    local ride
+    if type(p.ride)=='table' and (p.ride.mode=='ground' or p.ride.mode=='surf' or p.ride.mode=='fly')
+     and type(p.ride.species)=='string' and #p.ride.species<=32 and p.ride.species:match('^[A-Z0-9_]+$')then
+     ride={riderLift=finite(p.ride.riderLift)and math.max(-32,math.min(64,p.ride.riderLift))or 8,mode=p.ride.mode,species=p.ride.species,height=finite(p.ride.height)and math.max(0,math.min(96,p.ride.height))or 0}
+    end
+    return {ride=ride,map=p.map,x=p.x,y=p.y,px=p.px,py=p.py,facing=p.facing,
+      moving=p.moving==true,busy=p.busy==true,graphics=p.graphics,height=finite(p.height)and math.max(0,math.min(96,p.height))or 0,name=tostring(p.name or 'TRAINER'):sub(1,16)}
   end
   local function send(msg) if net and not net.closed then return net:send(msg) end end
   activities=loadLocal('lib/crossgen/activities.lua')(S,adapter,send)

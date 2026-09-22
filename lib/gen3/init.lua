@@ -16,9 +16,10 @@ return function(mod)
     local g=game()
     if not g or g.phase~='field' or not Map.current then return end
     local session=g.session or {}
+    local ride=mod.find and mod.find("DRAMATIC_SKY_RIDE");local rx=ride and ride.exports
     return {map=Map.current,x=Player.cellX,y=Player.cellY,px=Player.px,py=Player.py,
-      facing=Player.facing,moving=Player.moving,busy=adapter.menuBusy or Compat.worldBusy(),
-      graphics=Sprites.playerGraphicsId(g),name=session.playerName or session.name or 'TRAINER'}
+      facing=Player.facing,moving=Player.moving,busy=adapter.menuBusy or (rx and rx.isFlying and rx.isFlying())or Compat.worldBusy(),
+      graphics=Sprites.playerGraphicsId(g),height=math.max(0,-(Player.spriteYOffset or 0)),name=session.playerName or session.name or 'TRAINER'}
   end
   function adapter.peer(p)
     if not remote or remote.map~=p.map then
@@ -28,7 +29,10 @@ return function(mod)
     remote.facing=p.facing;remote.moving=p.moving
     -- Only a native imported sprite id may be rendered; never a peer path.
     local id=tonumber(p.graphics)
-    remote.graphicsId=(id and id>=0 and id<1024 and Sprites.getDraw(id)) and id or Sprites.playerGraphicsId(game())
+    local ride=mod.find and mod.find('DRAMATIC_SKY_RIDE');local ex=ride and ride.exports
+    local mount=id and ex and ex.resolveGen3Graphics and ex.resolveGen3Graphics(id)
+    remote.graphicsId=mount or (id and id>=0 and id<1024 and Sprites.getDraw(id) and id) or 0
+    remote.raiseY=-(tonumber(p.height) or 0)
   end
   function adapter.clearPeers()remote=nil end
   function adapter.update(dt)

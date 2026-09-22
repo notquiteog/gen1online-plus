@@ -173,7 +173,7 @@ return function(mod, session, adapter)
   end)
   local function nearPeer()
     local p,q=adapter.position(),session.peers.remote
-    if not session.connected or not p or p.busy or not q or p.map~=q.map then return false end
+    if session.activity or not session.connected or not p or p.busy or not q or p.map~=q.map then return false end
     local d=({up={0,-1},down={0,1},left={-1,0},right={1,0}})[p.facing]
     if d and q.x==p.x+d[1]and q.y==p.y+d[2]then UI.show();return true end
     return false

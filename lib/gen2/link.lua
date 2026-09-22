@@ -6,11 +6,17 @@ return function(mod,adapter)
   local Protocol=require('src.link.Protocol')
   local LinkBattle=require('src.link.LinkBattle2')
   local TradeScreen=assert((loadstring or load)(assert(mod:read('lib/gen2/trade.lua')),'@online/gen2/trade'))()
+  local Doubles=assert((loadstring or load)(assert(mod:read('lib/crossgen/double_link.lua')),'@online/double_link'))()
+  local function provider()
+    local m=mod.find and mod.find('double_battles');local p=m and m.exports and m.exports.online
+    return p and p.protocol==1 and p.generation==2 and p.attach and p.supportsDouble() and p or nil
+  end
   local current
-  function adapter.capabilities()return {single=true,trade=true}end
+  function adapter.capabilities()return {single=true,trade=true,double=provider()~=nil}end
   function adapter.startActivity(mode,transport,host,onDone)
     if current then return false,'Native link already active'end
-    if mode~='single'and mode~='trade'then return false,'Unsupported link mode'end
+    if mode~='single'and mode~='trade'and mode~='double'then return false,'Unsupported link mode'end
+    if mode=='double'and not provider()then return false,'Double Battles is required for doubles.'end
     local game=mod.world.game
     if not(game.save and game.save.party and #game.save.party>0)then return false,'No Pokemon in party'end
     local net=Session.new(transport,{role=host and 'host'or'guest',kind='link'})
@@ -56,7 +62,12 @@ return function(mod,adapter)
         local game=mod.world.game
         local opts={myParty=c.mine,theirParty=packet.mons,theirName=c.peer.name,
           seed=seed,verdict=c.verdict,strict=Handshake.strict(c.verdict),keepNetOpen=true}
-        local screen,why=(c.host and LinkBattle.newHost or LinkBattle.newGuest)(game,c.net,opts)
+        local proxy=c.mode=='double'and Doubles.transport(c.net)or c.net
+        local screen,why=(c.host and LinkBattle.newHost or LinkBattle.newGuest)(game,proxy,opts)
+        if screen and c.mode=='double'then
+          local ok,err=Doubles.attach(screen,proxy,provider(),c.host)
+          if not ok then finish(err);return end
+        end
         if not screen then finish(why or 'battle failed');return end
         c.screen=screen;screen.onFinish=finish;game.linkSession=true;game.stack:push(screen)
       end

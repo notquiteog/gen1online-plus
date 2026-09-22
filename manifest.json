@@ -1,10 +1,10 @@
 {
   "id": "gen1online-plus",
   "name": "Gen1Online+",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "entry": "main.lua",
   "author": "Gamecorner33, martin2844 (Original Blackjack Mod Creator), and Antigravity",
-  "description": "Two-player online rooms, overworld presence, chat, native singles and trading for Gen 1, Crystal and Gen 3; native Gen 3 doubles and optional host-owned Wilds encounters.",
+  "description": "Two-player rooms, overworld presence, chat, native singles and trading across Gen 1/2/3; optional Crystal and native Gen 3 doubles, ride synchronization and host-owned Wilds.",
   "category": "CONTENT",
   "assets_transforms": "transforms.lua",
   "api": 2,
