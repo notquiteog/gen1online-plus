@@ -1,3 +1,9 @@
+## 0.6.0 — 2026-09-22
+
+Adds persistent two-player rooms, overworld presence, chat bubbles, walk-up native singles and trading across Gen 1, Crystal and Gen 3, plus native Gen 3 online doubles. Optional Wilds integration gives the host ownership of shared visible encounters, including guest-only maps.
+
+Known limits: Gen 1/2 online doubles are not implemented. Shared overworld ball throwing is disabled; native battle catching remains available. The full disconnect and mixed-mod matrix is still pending. Earlier two-client activity testing used engine 0.2.73; current packaged-cart smoke testing is separate.
+
 ## 0.5.5 — 2026-09-14
 
 Correct standalone offline encounter selection for Crystal's numeric time-of-day

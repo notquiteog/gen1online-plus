@@ -35,7 +35,7 @@ mode for shared visible Pokémon. Legacy GTS/account features remain separate.
 ## Current validation
 
 Actual 0.2.73 Linux runtime, two separate game processes over localhost ENet,
-isolated saves, no public relay messages or player saves modified:
+isolated saves, player saves untouched (public relay tested separately):
 
 - Shared wild rosters, presence and chat: Yellow, Crystal, FireRed.
 - Host generation of guest-only maps: all three games.
@@ -46,13 +46,14 @@ isolated saves, no public relay messages or player saves modified:
 - FireRed native doubles: four Pokémon, paired commands and native target
   selection; completed on both clients, parties preserved. Battle Art status
   cards spaced apart; rendered capture inspected.
-- Crystal room trade integration is being tested, including normal saves,
-  native trade animation and trade evolutions.
+- Crystal native trades completed on both clients, including Machoke to Machamp
+  and Metal Coat Onix to Steelix; held item consumed and other slots preserved.
+- Two-client FireRed public-relay pairing, shared rosters, positions and chat
+  passed on relay.gen1re.com:7778 (separate from the localhost checks).
 
-Still required before cart release: Gen1/2 online doubles, completed FireRed
+Remaining parity work: Gen1/2 online doubles, completed FireRed
 Ride integration, mixed-mod compatibility, disconnect/cancel/evolution matrix,
-physical UI checks across all generations, actual public-relay pairing and
-final five-mod cart tests. These checks are not yet an all-feature parity claim.
+remaining physical UI checks and full five-mod activity tests on current engines. These checks are not yet an all-feature parity claim.
 
 The engine performs its normal battle/trade compatibility handshake; no
 fingerprint or protected-module guard is bypassed. The old custom Crystal PVP
