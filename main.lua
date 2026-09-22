@@ -1,6 +1,12 @@
 -- zip test2
 
   local mod = ...  -- the mod api (vararg from the loader, like PotatoVoxel's entry)
+  if require('src.core.GameVersion').generation()==1 then
+    return assert((loadstring or load)(assert(mod:read('lib/gb/init.lua')),'@online/gb/init'))()(mod)
+  end
+  if require('src.core.GameVersion').generation()==3 then
+    return assert((loadstring or load)(assert(mod:read('lib/gen3/init.lua')),'@online/gen3/init'))()(mod)
+  end
   local currentMod = nil
   print("[Gen1Online+] Initializing Gen1Online+ Asynchronous Threaded 60FPS Multiplayer Mod...")
 
@@ -36,8 +42,6 @@
   local Quests = {}
   local NPCs = {}
   local GtsUI = {}
-  local EncounterRoster = loadLocal(mod, "other/EncounterRoster.lua")()
-  local Wild = { active = {}, tilesCache = {}, latestServer = nil, db = nil, lastMapId = nil }
   local Jobs = {
     registry = {},
     nextId = 1
@@ -1239,26 +1243,6 @@
   local syncMultiNetPlayers, startPvpBattle, startLinkTrade, saveOnlineAccount, loadOnlineAccount, syncLocalProfile, performForcedSave, writeOnlineSave, loadOnlineSave, addMmoXp, openOnlineOptionsMenu, openFreshOnlinePlayerMenu, openRedeemTokenMenu, openMyProfileMenu, openServerUrlMenu, openTrainerCardScreen, openMmoLevelInfoScreen, openMmoChatMenu, handleDisconnect, handleConnectToServer, applyPlayerSprite
 
 
-  -- Hook World:interactBody to trigger wild battle on A-press facing wild Pokémon
-  pcall(function()
-    local okW, Gen2World = pcall(require, "src.world.gen2.World")
-    if okW and Gen2World and Gen2World.interactBody then
-      local origInteractBody = Gen2World.interactBody
-      Gen2World.interactBody = function(self)
-        if self.facingObjectCell then
-          local targetCell = self:facingObjectCell()
-          if targetCell then
-            local npc = self:npcAt(targetCell)
-            if npc and npc.isWildMon then
-              return startWildMonBattle(self.game, self, npc)
-            end
-          end
-        end
-        return origInteractBody(self)
-      end
-    end
-  end)
-
   -- ==========================================================================
   -- Non-blocking persistent HTTP/1.1 client & MMO Sync Engine
   -- ==========================================================================
@@ -1881,11 +1865,6 @@
                 Clock.setTime(game.save, res.serverHour, res.serverMinute)
                 Clock.setWeekday(game.save, res.serverWeekday)
               end
-            end
-
-            -- Synchronize Overworld Wild Encounters
-            if res.wildEncounters and type(res.wildEncounters) == "table" then
-              Wild.latestServer = res.wildEncounters
             end
 
             -- Synchronize Real-Time Global Chat Messages
@@ -3211,8 +3190,6 @@
             if FollowerMod and FollowerMod.talk then
               return FollowerMod.talk(self.game, self, npc, function() self:unfreezeNpc(npc) end)
             end
-          elseif npc and npc.isWildMon then
-            return startWildMonBattle(self.game, self, npc)
           end
         end
         return origInteractBody(self)
@@ -3259,358 +3236,10 @@
   end
 
 
-  -- =========================================================================
-  -- OVERWORLD WILD POKEMON SPAWNER & ENCOUNTER ENGINE (GEN 2 CRYSTAL)
-  -- Synchronized with 24/7 server & encounter_tables.json
-  -- Strict COLL_TALL_GRASS / COLL_LONG_GRASS in-bounds validation
-  -- Uses authentic 1:1 PokeEmerald true-color overworld sprites
-  -- =========================================================================
-
-
-  local function loadEncounterTablesDb()
-    if Wild.db and next(Wild.db) then return Wild.db end
-    local raw = nil
-    if mod and mod.read then
-      local ok, res = pcall(function() return mod:read("data/encounter_tables.json") end)
-      if ok and type(res) == "string" and #res > 0 then
-        raw = res
-      end
-    end
-    if raw and Json and Json.decode then
-      local ok, res = pcall(Json.decode, raw)
-      if ok and type(res) == "table" then
-        Wild.db = res
-        return Wild.db
-      end
-    end
-    Wild.db = {}
-    return Wild.db
-  end
-
-  local function getMapValidGrassTiles(map)
-    if not map or not map.id then return {} end
-    if Wild.tilesCache[map.id] then return Wild.tilesCache[map.id] end
-
-    local tiles = {}
-    local w = map.widthCells or (map.width and map.width * 2) or 20
-    local h = map.heightCells or (map.height and map.height * 2) or 20
-
-    local isGrassMap = false
-    -- First pass: find tall grass (0x18) or long grass (0x14) or aliases
-    for cy = 0, h - 1 do
-      for cx = 0, w - 1 do
-        local coll = map:cellCollision(cx, cy)
-        if coll == 0x18 or coll == 0x14 or coll == 0x10 or coll == 0x1C or (coll >= 0x48 and coll <= 0x4C) then
-          table.insert(tiles, { x = cx, y = cy, grass = true })
-          isGrassMap = true
-        end
-      end
-    end
-
-    -- If no grass tiles found (e.g. cave, dungeon), scan walkable land tiles
-    if not isGrassMap and #tiles == 0 then
-      local okP, Permissions = pcall(require, "src.world.gen2.Permissions")
-      for cy = 1, h - 2 do
-        for cx = 1, w - 2 do
-          local coll = map:cellCollision(cx, cy)
-          if okP and Permissions and Permissions.isLand and Permissions.isLand(coll) and coll ~= 0x07 and coll ~= 0x0F then
-            table.insert(tiles, { x = cx, y = cy, grass = false })
-          end
-        end
-      end
-    end
-
-    Wild.tilesCache[map.id] = tiles
-    return tiles
-  end
-
-  local function isTileClearForSpawn(world, cx, cy)
-    if not world or not world.map then return false end
-    if not world.map.inBounds or not world.map:inBounds(cx, cy) then return false end
-    if world.map.isWalkableCell and not world.map:isWalkableCell(cx, cy) then return false end
-    if world.npcAt and world:npcAt(cx, cy) then return false end
-    local p = world.player
-    if p and (p.cellX == cx or (p.targetX == cx)) and (p.cellY == cy or (p.targetY == cy)) then
-      return false
-    end
-    return true
-  end
-
-  local function startWildMonBattle(game, world, npc)
-    if not game or not world or not npc or npc._inBattle then return true end
-    npc._inBattle = true
-
-    if world.freezeNpc then pcall(world.freezeNpc, world, npc) end
-    if world.player and world.player.freeze then pcall(world.player.freeze, world.player) end
-
-    -- 1. Play authentic species cry
-    pcall(function()
-      local Sound = require("src.core.Sound")
-      if Sound and Sound.playCry then
-        Sound.playCry(game.data, npc.species)
-      end
-    end)
-
-    -- 2. Claim encounter on 24/7 server if online
-    local encId = npc.encounterId or ("local_" .. tostring(os.time()))
-    if isGtsServerConnected and gtsApiPost and world.map and world.map.id then
-      local myTid = select(1, getTrainerInfo(game.save))
-      gtsApiPost({
-        action = "claim_wild_encounter",
-        map = world.map.id,
-        encounterId = encId,
-        trainerId = tostring(myTid)
-      }, 0.5)
-    end
-
-    -- 3. Remove from overworld NPC pool
-    Wild.active[encId] = nil
-    EncounterRoster.consume(Wild.localRoster, encId)
-    if world.npcs then
-      for i = #world.npcs, 1, -1 do
-        if world.npcs[i] == npc then
-          table.remove(world.npcs, i)
-          break
-        end
-      end
-    end
-    if world.entities then
-      for j = #world.entities, 1, -1 do
-        if world.entities[j] == npc then
-          table.remove(world.entities, j)
-          break
-        end
-      end
-    end
-
-    -- 4. Launch authentic Gen 2 wild battle
-    local species = npc.species or "PIDGEY"
-    local level = npc.level or 3
-    local isShiny = npc.shiny or false
-
-    local okMon, Mon = pcall(require, "src.battle.gen2.Mon")
-    if okMon and Mon and Mon.new and world.startBattle then
-      local wildMon = Mon.new(game.data, species, level, {
-        timeOfDay = world.timeOfDayId and world:timeOfDayId(),
-        shiny = isShiny
-      })
-      if wildMon then
-        if game.save and game.save.pokedex then
-          game.save.pokedex.seen = game.save.pokedex.seen or {}
-          game.save.pokedex.seen[species] = true
-        end
-        world:startBattle({ wild = wildMon })
-        return true
-      end
-    end
-    return true
-  end
-
-  local function updateOverworldWildPokemon(game, world, dt)
-    if not game or not world or not world.map or not world.map.id then return end
-    local mapId = world.map.id
-
-    -- On map change, clean up previous wild mons
-    if Wild.lastMapId ~= mapId or Wild.world ~= world then
-      Wild.lastMapId = mapId
-      Wild.world = world
-      Wild.localRoster = nil
-      Wild.latestServer = nil
-      for encId, entry in pairs(Wild.active) do
-        if entry.npc and world.npcs then
-          for i = #world.npcs, 1, -1 do
-            if world.npcs[i] == entry.npc then table.remove(world.npcs, i) break end
-          end
-        end
-        if entry.npc and world.entities then
-          for j = #world.entities, 1, -1 do
-            if world.entities[j] == entry.npc then table.remove(world.entities, j) break end
-          end
-        end
-      end
-      Wild.active = {}
-    end
-
-    -- Wilds owns local encounters in the cart. Online server encounters stay
-    -- available when connected; never generate a second offline population.
-    if not isGtsServerConnected and wildsOwns(game, "encounters") then
-      -- A disconnect can happen on the same map. Remove only this spawner's
-      -- old server actors; leave Wilds, ambient NPCs and followers untouched.
-      for _, entry in pairs(Wild.active) do
-        for _, list in ipairs({world.npcs or {}, world.entities or {}}) do
-          for i = #list, 1, -1 do
-            if list[i] == entry.npc then table.remove(list, i) end
-          end
-        end
-      end
-      Wild.active, Wild.localRoster = {}, nil
-      return
-    end
-
-    -- Load encounter database
-    local db = loadEncounterTablesDb()
-    local mapConfig = db[mapId] or db["LANDMARK_" .. mapId]
-    if not mapConfig and world.map.landmark then
-      local lm = tostring(world.map.landmark)
-      mapConfig = db[lm] or db["LANDMARK_" .. lm]
-    end
-    if not mapConfig then return end
-
-    local grassTiles = getMapValidGrassTiles(world.map)
-    if #grassTiles == 0 then return end
-
-    -- Determine target encounters (from server or offline local generator)
-    local targetList
-    if isGtsServerConnected then
-      targetList = EncounterRoster.validTargets(Wild.latestServer, game.data.pokemon)
-    else
-      local tod = world.timeOfDayId and world:timeOfDayId() or "DAY"
-      if not Wild.localRoster then
-        Wild.localRoster = EncounterRoster.generate(mapId, mapConfig, tod,
-          #grassTiles, game.data.pokemon, math.random)
-      end
-      targetList = Wild.localRoster
-    end
-
-    -- Clean up stale encounters not in target list
-    local targetIds = {}
-    for _, t in ipairs(targetList) do targetIds[t.id] = true end
-    for encId, entry in pairs(Wild.active) do
-      if not targetIds[encId] then
-        if entry.npc and world.npcs then
-          for i = #world.npcs, 1, -1 do
-            if world.npcs[i] == entry.npc then table.remove(world.npcs, i) break end
-          end
-        end
-        if entry.npc and world.entities then
-          for j = #world.entities, 1, -1 do
-            if world.entities[j] == entry.npc then table.remove(world.entities, j) break end
-          end
-        end
-        Wild.active[encId] = nil
-      end
-    end
-
-    local okNpc, Gen2NPC = pcall(require, "src.world.gen2.Npc")
-    if not okNpc or not Gen2NPC then return end
-
-    -- Spawn missing encounters
-    for idx, enc in ipairs(targetList) do
-      if not Wild.active[enc.id] then
-        -- Find unoccupied grass tile
-        local chosenTile = nil
-        for attempt = 1, 25 do
-          local cand = grassTiles[math.random(1, #grassTiles)]
-          if cand and isTileClearForSpawn(world, cand.x, cand.y) then
-            chosenTile = cand
-            break
-          end
-        end
-
-        if chosenTile then
-          local spDef, spId = getFollowerSpriteDef(game, enc.species, enc.shiny)
-          if spDef then
-            if world.sprites then world.sprites[spId] = spDef end
-            if game.data and game.data.gen2Sprites then game.data.gen2Sprites[spId] = spDef end
-
-            local npc = Gen2NPC.new(mapId, {
-              index = 300 + idx,
-              name = "WILD_" .. tostring(enc.species),
-              sprite = spId,
-              movement = Gen2NPC.MOVE.STANDING_DOWN,
-              x = chosenTile.x,
-              y = chosenTile.y
-            }, spDef)
-
-            npc.isWildMon = true
-            npc.encounterId = enc.id
-            npc.species = enc.species
-            npc.level = enc.level or 3
-            npc.shiny = enc.shiny or false
-            npc.passable = true
-            npc._wanderCooldown = math.random(2.0, 4.5)
-
-            world.npcs = world.npcs or {}
-            world.entities = world.entities or {}
-            table.insert(world.npcs, npc)
-            table.insert(world.entities, npc)
-
-            Wild.active[enc.id] = {
-              npc = npc,
-              species = enc.species,
-              level = enc.level,
-              shiny = enc.shiny,
-              timer = 0
-            }
-          end
-        end
-      end
-    end
-
-    -- Keep all active wild mons in world.npcs and world.entities across rebuilds
-    for encId, entry in pairs(Wild.active) do
-      local npc = entry.npc
-      if npc then
-        local inNpcs = false
-        for _, n in ipairs(world.npcs or {}) do
-          if n == npc then inNpcs = true break end
-        end
-        if not inNpcs then
-          world.npcs = world.npcs or {}
-          table.insert(world.npcs, npc)
-        end
-
-        local inEntities = false
-        for _, e in ipairs(world.entities or {}) do
-          if e == npc then inEntities = true break end
-        end
-        if not inEntities then
-          world.entities = world.entities or {}
-          table.insert(world.entities, npc)
-        end
-      end
-    end
-
-    -- Wander AI & Player Bump Collision Check
-    local px = world.player and (world.player.cellX or world.player.x)
-    local py = world.player and (world.player.cellY or world.player.y)
-
-    for encId, entry in pairs(Wild.active) do
-      local npc = entry.npc
-      if npc and not npc._inBattle then
-        -- 1. Check direct bump collision with player
-        if px and py and npc.cellX == px and npc.cellY == py then
-          startWildMonBattle(game, world, npc)
-          return
-        end
-
-        -- 2. Wander AI
-        npc._wanderCooldown = (npc._wanderCooldown or 3.0) - (dt or 0.016)
-        if npc._wanderCooldown <= 0 and not npc.moving and not (world.busy and world:busy()) then
-          npc._wanderCooldown = math.random(2.5, 5.0)
-          local dirs = {"down", "up", "left", "right"}
-          local d = dirs[math.random(1, 4)]
-          local dx, dy = 0, 0
-          if d == "down" then dy = 1
-          elseif d == "up" then dy = -1
-          elseif d == "left" then dx = -1
-          elseif d == "right" then dx = 1 end
-
-          local targetX = npc.cellX + dx
-          local targetY = npc.cellY + dy
-
-          -- Only step if target cell is valid grass and clear
-          local coll = world.map:cellCollision(targetX, targetY)
-          local isGrassTile = (coll == 0x18 or coll == 0x14 or coll == 0x10 or coll == 0x1C or (coll >= 0x48 and coll <= 0x4C))
-          if isGrassTile and isTileClearForSpawn(world, targetX, targetY) then
-            if npc.scriptStep then
-              npc:scriptStep(d)
-            end
-          end
-        end
-      end
-    end
-  end
+  -- Visible encounters belong to the optional Wilds provider. Multiplayer
+  -- rooms synchronize its host-owned roster and claims. The old HTTP service
+  -- supplied species without positions or atomic grants; its independent
+  -- client spawner has been removed rather than presenting it as shared.
 
   -- Register persistent background jobs for asynchronous MMO coordination
 
@@ -3665,7 +3294,6 @@
     if ow then
       checkEmeraldAssetsStartup(game)
       updatePlayerFollower(game, ow)
-      updateOverworldWildPokemon(game, ow, dt)
       if isGtsServerConnected then
         for _, pNpc in pairs(netNpcs) do updateNpcMovement(pNpc, dt) end
         for _, fNpc in pairs(netFollowers) do updateNpcMovement(fNpc, dt) end
@@ -7375,5 +7003,6 @@ return function(mod)
     end
   end
 
+  loadLocal(mod, 'lib/gb/init.lua')(mod)
   print("[Gen1Online+] Asynchronous Threaded 60FPS Multiplayer Mod initialized successfully.")
 end

@@ -1,10 +1,18 @@
 # Gen1Online+ - Multiplayer, GTS & Overworld Expansions
 
+> **Unreleased cross-generation room port:** Press F8 for a two-player room and
+> F9 for chat. Rooms use the host-owned Wilds roster, positions and encounter
+> claims, including town Pokémon and maps visited separately. Both players
+> need the same game. See [room integration and validation](docs/CROSSGEN_ROOMS.md).
+> The historical Crystal GTS/MMO service below is separate; its independent
+> visible-wild spawner has been removed. Use rooms for shared visible encounters.
+
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Mod Version: v0.5.0](https://img.shields.io/badge/version-0.5.0-green.svg)](manifest.json)
 [![Game: Pokemon Crystal](https://img.shields.io/badge/target-Pokemon%20Crystal-blue.svg)](https://github.com/bryanthaboi/gen1recomp)
 
-**Gen1Online+** brings a complete real-time multiplayer co-op experience with true-color overworld follower sprites, synchronized wild Pokémon encounters, real-time authoritative server clock, and a 24/7 Global Trade Station (GTS) to *Pokémon Crystal*.
+**Gen1Online+** brings a complete real-time multiplayer co-op experience with true-color overworld follower sprites, real-time authoritative server clock, and a 24/7 Global Trade Station (GTS) to *Pokémon Crystal*.
 
 ---
 
@@ -20,7 +28,7 @@
 - **Unified Day/Night Cycles**: Ensures all players in the world experience synchronized morning, day, night lighting and encounter tables. Manual clock manipulation is locked out for fair gameplay.
 
 ### 🌿 3. Overworld Wild Pokémon Roaming
-- **Live Grass Spawns**: Wild Pokémon actively roam in grass patches across 95+ Johto and Kanto landmarks.
+- **Host-owned room spawns**: The optional Wilds of Kanto mod produces visible Pokémon; the room host controls their identities, wandering and encounter grants.
 - **Facing Encounters**: Walk up to wild Pokémon in the field and press **`A`** to trigger authentic battle transitions with cries and shiny chances.
 
 ### 🐾 4. 1:1 True-Color PokeEmerald Follower Sprites

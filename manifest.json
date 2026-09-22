@@ -9,7 +9,9 @@
   "assets_transforms": "transforms.lua",
   "api": 2,
   "games": [
-    "crystal"
+    "gen1",
+    "crystal",
+    "gen3"
   ],
   "optional_dependencies": [
     "pokegear_cards"
