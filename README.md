@@ -1,3 +1,9 @@
+## 0.8.0 — 2026-09-22
+
+Includes optional cross-generation riding and host-owned ground/sky encounter synchronization, chat, trading and single/double battle integration. Multiplayer move/disconnect edge cases still need wider coverage.
+
+Numbered release of the tested 0.8.0-test.2 build. Runtime and assets are unchanged except version metadata; packaging and cart pins are refreshed. Validation from the prior exact releases remains applicable: official Gen1Recomp 0.3.1, isolated profiles, targeted native rendering/integration checks. This release does not claim complete cross-generation feature or visual parity.
+
 # Gen1Online+
 
 Current test release: **0.8.0-test.2**. Persistent two-player rooms provide overworld presence, chat bubbles, walk-up trading and native single battles across Gen 1, Crystal, FireRed and LeafGreen. Optional Double Battles enables doubles; Dramatic Ride, Wilds and Wild Skies integrate when installed without becoming dependencies.
