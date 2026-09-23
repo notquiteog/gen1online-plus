@@ -1,3 +1,11 @@
+## 0.8.0-test.2 — 2026-09-22
+
+Adds optional host-owned Wild Skies populations across generations. Bird claims preserve altitude and identity, reserve a bird during its battle, and restore it after escape or failed entry. Captured/defeated birds stay consumed. Both peers negotiate support; Wild Skies remains optional.
+
+Shared visible-spawn ball throws now resolve through the native generation adapter after host approval, consume the ball only on grant, and restore a failed catch. Preserves full unsigned 32-bit Gen 3 personality values and synchronizes optional ride size/rider visibility.
+
+Focused protocol tests cover duplicate grants, stale snapshots, range/altitude, failed catches, escapes and disconnect restoration. This prerelease is published before native gameplay verification at the user's request. Shared skies on maps outside the host provider's supported resident/neighbor fields remain a documented limitation; exhaustive move and disconnect combinations are not certified.
+
 ## 0.8.0-test.1 — 2026-09-22
 
 Optional Gen 1 paired-action online doubles using native party clones, handshake, turn hashes and room cleanup. Existing single/trade paths retained.

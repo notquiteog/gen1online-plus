@@ -31,6 +31,8 @@ assert(host:handle('throwing',release));assert(host.maps.ROUTE29.rows[spawn.id])
 assert(claim('throwing',1,5));assert(sent[#sent][2].kind=='deny','expired requests cannot be granted again')
 assert(not guest:handle('host',failedGrant,nil,true),'unsolicited grant cannot start battle')
 assert(not M.record{id='bad',x=0,y=0,level=4,species=0/0})
+assert(M.record{id='pid',x=0,y=0,level=4,species=25,personality=4294967295}.personality==4294967295)
+assert(not M.record{id='pid',x=0,y=0,level=4,species=25,personality=4294967296})
 local recursive={id='safe',x=0,y=0,level=4,species='PIDGEY'};recursive.payload=recursive
 assert(M.record(recursive).payload==nil,'unknown recursive input is discarded')
 local town={id='town:1',x=5,y=7,species='SENTRET',level=1,ambient=true,wanders=true}

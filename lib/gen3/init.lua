@@ -17,8 +17,9 @@ return function(mod)
     if not g or g.phase~='field' or not Map.current then return end
     local session=g.session or {}
     local ride=mod.find and mod.find("DRAMATIC_SKY_RIDE");local rx=ride and ride.exports
+    local worldBusy=adapter.menuBusy or Compat.worldBusy()
     return {map=Map.current,x=Player.cellX,y=Player.cellY,px=Player.px,py=Player.py,
-      facing=Player.facing,moving=Player.moving,busy=adapter.menuBusy or (rx and rx.isFlying and rx.isFlying())or Compat.worldBusy(),
+      facing=Player.facing,moving=Player.moving,skyBusy=worldBusy==true,busy=worldBusy or (rx and rx.isFlying and rx.isFlying()),
       graphics=Sprites.playerGraphicsId(g),height=math.max(0,-(Player.spriteYOffset or 0)),name=session.playerName or session.name or 'TRAINER'}
   end
   function adapter.peer(p)

@@ -1,24 +1,10 @@
-> Test build 0.8.0-test.1: Optional Gen 1 paired-action online doubles using native party clones, handshake, turn hashes and room cleanup. Existing single/trade paths retained. Gameplay verification pending.
+# Gen1Online+
 
-**0.7.0: Synchronized rides and Crystal online doubles.** Synchronizes optional Dramatic Ride mounts, riders, direction, movement and flight height. Adds optional Crystal online doubles over native cloned-party link battles with paired actions and turn verification. Prevents the room menu from interrupting battle setup.
+Current test release: **0.8.0-test.2**. Persistent two-player rooms provide overworld presence, chat bubbles, walk-up trading and native single battles across Gen 1, Crystal, FireRed and LeafGreen. Optional Double Battles enables doubles; Dramatic Ride, Wilds and Wild Skies integrate when installed without becoming dependencies.
 
-Known limits: Gen 1 online doubles remain unavailable. The full mixed-mod and disconnect matrix is not certified.
+The host controls visible ground and sky populations. Ground captures require host approval. Sky birds remain reserved until battle results determine whether to consume or restore them. Both peers must use the same game and compatible versions. Public test releases precede the native gameplay verification pass; see [the changelog](CHANGELOG.md) and [cross-generation validation](docs/CROSSGEN_ROOMS.md) for limits.
 
-Requires Gen1Recomp 0.3.1 for the verified Gen 3 path. Other mods are optional; no ROM, player save or import cache is included.
-
-**0.6.0: Cross-generation rooms and host-owned encounters.** Adds persistent two-player rooms, overworld presence, chat bubbles, walk-up native singles and trading across Gen 1, Crystal and Gen 3, plus native Gen 3 online doubles. Optional Wilds integration gives the host ownership of shared visible encounters, including guest-only maps.
-
-Gen 1/2 online doubles are not implemented. Shared overworld ball throwing is disabled; native battle catching remains available. The full disconnect and mixed-mod matrix is still pending. Earlier two-client activity testing used engine 0.2.73; current packaged-cart smoke testing is separate.
-
-# Gen1Online+ - Multiplayer, GTS & Overworld Expansions
-
-> **Unreleased cross-generation room port:** Press F8 for a two-player room and
-> F9 for chat. Rooms use the host-owned Wilds roster, positions and encounter
-> claims, including town Pokémon and maps visited separately. Both players
-> need the same game. See [room integration and validation](docs/CROSSGEN_ROOMS.md).
-> The historical Crystal GTS/MMO service below is separate; its independent
-> visible-wild spawner has been removed. Use rooms for shared visible encounters.
-
+The historical Crystal service described below is separate from these cross-generation rooms.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Mod Version: v0.5.0](https://img.shields.io/badge/version-0.5.0-green.svg)](manifest.json)

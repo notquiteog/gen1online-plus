@@ -23,9 +23,9 @@ return function(mod)
     local api=rideAPI();local mounted=api and api.networkPose and api.networkPose()
     if not mounted then baseSprite=p.sprite end
     local top=g.stack and g.stack:top()
+    local worldBusy=adapter.menuBusy or (top~=nil and top~=w) or (w.busy and w:busy()) or w.battleActive==true
     return {ride=mounted,map=w.map.id,x=p.cellX,y=p.cellY,px=p.px,py=p.py,facing=p.facing,
-      moving=p.moving,busy=adapter.menuBusy or (mounted and mounted.mode=='fly') or (top~=nil and top~=w)
-        or (w.busy and w:busy())or w.battleActive==true,
+      moving=p.moving,skyBusy=worldBusy==true,busy=worldBusy or (mounted and mounted.mode=='fly'),
       name=g.save and g.save.player and g.save.player.name or 'TRAINER'}
   end
   function adapter.clearPeers()detach();remote=nil;rider=nil end

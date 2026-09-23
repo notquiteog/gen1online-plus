@@ -19,10 +19,15 @@ local function record(r)
       or not integer(r.level) or r.level < 1 or r.level > 100 then return end
   if not (token(r.species) or (integer(r.species) and r.species > 0 and r.species < 65536)) then return end
   local out = { id = r.id, species = r.species, level = r.level, x = r.x, y = r.y }
-  for _, k in ipairs({'px', 'py', 'phase', 'personality', 'targetX', 'targetY', 'progress'}) do
+  for _, k in ipairs({'px', 'py', 'phase', 'targetX', 'targetY', 'progress'}) do
     if r[k] ~= nil then if not finite(r[k]) then return end; out[k] = r[k] end
   end
-  for _, k in ipairs({'terrain', 'surface', 'encounterKind', 'form'}) do
+  if r.personality~=nil then
+    local pid=r.personality
+    if type(pid)~='number' or pid~=pid or pid%1~=0 or pid<0 or pid>4294967295 then return end
+    out.personality=pid
+  end
+  for _, k in ipairs({'terrain', 'surface', 'encounterKind', 'form', 'behavior', 'variant'}) do
     if r[k] ~= nil then if not token(r[k]) then return end; out[k] = r[k] end
   end
   if r.facing ~= nil then
@@ -31,6 +36,7 @@ local function record(r)
   end
   out.moving, out.shiny = r.moving == true, r.shiny == true
   out.visibleSprite, out.hiddenEncounter = r.visibleSprite ~= false, r.hiddenEncounter == true
+  out.scenery = r.scenery == true
   out.ambient, out.wanders, out.stepFlip = r.ambient == true, r.wanders == true, r.stepFlip == true
   return out
 end
@@ -67,16 +73,22 @@ function M.new(opts)
     opts.send(peer, msg)
     return true
   end
-  function W:request(map, id)
+  function W:request(map, id, action)
     if self.closed then return nil, 'disconnected' end
     if not token(map) or not token(id) then return nil, 'invalid spawn' end
     for _, p in pairs(self.pending) do
       if p.map == map and p.spawn == id then return nil, 'claim pending' end
     end
+    local request
+    if action ~= nil then
+      if type(action) ~= 'table' or action.action ~= 'catch' or not integer(action.ballId)
+          or action.ballId < 1 or action.ballId > 65535 or not finite(action.charge or 0) then return nil, 'invalid action' end
+      request = {action='catch',ballId=action.ballId,charge=math.max(0,math.min(1,action.charge or 0))}
+    end
     self.sequence = self.sequence + 1
     local msg = envelope('claim', map)
-    msg.spawn, msg.request = id, self.sequence
-    self.pending[msg.request] = {map = map, spawn = id, time = self.clock}
+    msg.spawn, msg.request, msg.action = id, self.sequence, request
+    self.pending[msg.request] = {map = map, spawn = id, time = self.clock, action=request}
     opts.send(nil, msg)
     return self.sequence
   end
@@ -117,14 +129,17 @@ function M.new(opts)
         if not p or p.map ~= msg.map then return false, 'no pending claim' end
         if msg.kind == 'deny' then
           self.pending[msg.request] = nil
-          if opts.onDenied then opts.onDenied(msg.reason) end
+          if opts.onDenied then opts.onDenied(msg.reason,p.map,p.spawn) end
           return true
         end
         local r = record(msg.row)
         if not r or r.id ~= p.spawn then return false, 'invalid grant' end
         self.pending[msg.request] = nil -- Consume before calling native battle.
-        local ran, ok, why = pcall(opts.onEncounter or function() return false end, r, msg.map)
-        local reply = envelope(ran and ok and 'commit' or 'release', msg.map)
+        local catcher = p.action and p.action.action == 'catch'
+        local callback = catcher and opts.onCatch or opts.onEncounter
+        local ran, ok, why = pcall(callback or function() return false end, r, msg.map, p.action)
+        local consumed = ran and ok == true and (not catcher or type(why)=='table' and why.caught==true)
+        local reply = envelope(consumed and 'commit' or 'release', msg.map)
         reply.request, reply.spawn = msg.request, r.id
         opts.send(nil, reply)
         return ran and ok == true, ran and why or ok
@@ -140,11 +155,19 @@ function M.new(opts)
       local state = self.maps[msg.map]
       local row = state and state.rows[msg.spawn]
       local reason
-      if not position or position.map ~= msg.map or not finite(position.x) or not finite(position.y) then reason = 'different map'
+      local action=msg.action
+      local catching=type(action)=='table' and action.action=='catch'
+      local validAction=action==nil or catching and integer(action.ballId) and action.ballId>=1 and action.ballId<=65535
+        and finite(action.charge) and action.charge>=0 and action.charge<=1
+      local range=catching and validAction and 2+math.floor(action.charge*4) or 1
+      if not validAction then reason='invalid action'
+      elseif not position or position.map ~= msg.map or not finite(position.x) or not finite(position.y) then reason = 'different map'
       elseif position.busy then reason = 'player busy'
       elseif not row then reason = 'already claimed'
-      elseif row.ambient then reason = 'not a wild encounter'
-      elseif math.abs(position.x - row.x) + math.abs(position.y - row.y) > 1 then reason = 'too far' end
+      elseif row.ambient or row.scenery then reason = 'not a wild encounter'
+      elseif math.abs(position.x - row.x) + math.abs(position.y - row.y) > range then reason = 'too far'
+      elseif catching and position.x~=row.x and position.y~=row.y then reason='not in throw line'
+      elseif catching and opts.canCatch and not opts.canCatch(position,row,action,msg.map) then reason='blocked throw' end
       local reply = envelope(reason and 'deny' or 'grant', msg.map)
       reply.request, reply.reason = msg.request, reason
       if not reason then

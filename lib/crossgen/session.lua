@@ -15,12 +15,13 @@ return function(mod, loadLocal, adapter)
     local ride
     if type(p.ride)=='table' and (p.ride.mode=='ground' or p.ride.mode=='surf' or p.ride.mode=='fly')
      and type(p.ride.species)=='string' and #p.ride.species<=32 and p.ride.species:match('^[A-Z0-9_]+$')then
-     ride={riderLift=finite(p.ride.riderLift)and math.max(-32,math.min(64,p.ride.riderLift))or 8,mode=p.ride.mode,species=p.ride.species,height=finite(p.ride.height)and math.max(0,math.min(96,p.ride.height))or 0}
+     ride={showRider=p.ride.showRider~=false,mountScale=finite(p.ride.mountScale)and math.max(.25,math.min(8,p.ride.mountScale))or 1,riderLift=finite(p.ride.riderLift)and math.max(-32,math.min(64,p.ride.riderLift))or 8,mode=p.ride.mode,species=p.ride.species,height=finite(p.ride.height)and math.max(0,math.min(96,p.ride.height))or 0}
     end
     return {ride=ride,map=p.map,x=p.x,y=p.y,px=p.px,py=p.py,facing=p.facing,
-      moving=p.moving==true,busy=p.busy==true,graphics=p.graphics,height=finite(p.height)and math.max(0,math.min(96,p.height))or 0,name=tostring(p.name or 'TRAINER'):sub(1,16)}
+      moving=p.moving==true,busy=p.busy==true,skyBusy=p.skyBusy==true or(p.skyBusy==nil and p.busy==true),graphics=p.graphics,height=finite(p.height)and math.max(0,math.min(96,p.height))or 0,name=tostring(p.name or 'TRAINER'):sub(1,16)}
   end
   local function send(msg) if net and not net.closed then return net:send(msg) end end
+  local skies=loadLocal('lib/crossgen/sky_session.lua')(mod,loadLocal,adapter,S,send)
   activities=loadLocal('lib/crossgen/activities.lua')(S,adapter,send)
   local function findProvider()
     local other=mod.find and mod.find('overworld_wild_spawns')
@@ -37,10 +38,11 @@ return function(mod, loadLocal, adapter)
   end
   local function installWorld(session)
     S.session=session
-    config={session=session,role=S.host and 'host' or 'guest',request=function(map,id)
+    config={session=session,catching=S.host or (S.peerCapabilities or {}).sharedCatching==true,role=S.host and 'host' or 'guest',request=function(map,id,action)
       if not S.connected or not client then return false,'not connected' end
       if S.activity then return false,'player busy with link activity' end
-      local n,why=client:request(map,id);return n~=nil,why
+      if action and action.action=='catch' and not config.catching then return false,'host does not support shared catching' end
+      local n,why=client:request(map,id,action);return n~=nil,why
     end}
     client=SharedWorld.new{session=session,
       send=function(_,msg)
@@ -53,9 +55,16 @@ return function(mod, loadLocal, adapter)
         local p=adapter.position();if not p or p.busy or S.activity then return false,'player busy' end
         return provider.beginEncounter(row,map)
       end,
-      onDenied=function(reason) S.notice=reason end}
+      onCatch=function(row,map,request)
+        if not provider or not provider.beginCatch then return false,{message='visible catching unavailable'} end
+        local p=adapter.position();if not p or p.busy or S.activity then return false,{message='player busy'} end
+        return provider.beginCatch(row,map,request)
+      end,
+      onDenied=function(reason,map,id) S.notice=reason;if provider and provider.catchDenied then provider.catchDenied(map,id,reason)end end}
     if S.host then
-      authority=SharedWorld.new{host=true,session=session,send=function(peer,msg)
+      authority=SharedWorld.new{host=true,session=session,canCatch=function(position,row,action,map)
+        return provider and provider.canCatch and provider.canCatch(position,row,action,map)==true
+      end,send=function(peer,msg)
         if peer=='local' or not peer then client:handle('host',msg,nil,true) end
         if peer~='local' then send(msg) end
       end}
@@ -64,6 +73,7 @@ return function(mod, loadLocal, adapter)
     if provider then provider.configure(config) end
   end
   function S.disconnect(reason)
+    skies.clear()
     S.connected=false;S.notice=reason;S.peers={}
     activities.disconnect()
     if net then net:close();net=nil end
@@ -83,9 +93,15 @@ return function(mod, loadLocal, adapter)
   function S.joinLan(address)return start(false,'join',address)end
   function S.hostOnline(relay)return start(true,'hostOnline',relay or Net.defaultRelayAddress())end
   function S.joinOnline(relay,code)return start(false,'joinOnline',relay or Net.defaultRelayAddress(),code)end
+  local function capabilities()
+    local out={};for k,v in pairs(adapter.capabilities and adapter.capabilities()or{})do out[k]=v end
+    local p=findProvider();out.sharedCatching=p and type(p.beginCatch)=='function' and type(p.canCatch)=='function' or false
+    out.sharedSkies=skies.available()
+    return out
+  end
   local function hello()
     send{type='world_hello',protocol=1,generation=adapter.generation,game=adapter.game,
-      host=S.host,name=(adapter.position() or {}).name,capabilities=adapter.capabilities and adapter.capabilities()or{}}
+      host=S.host,name=(adapter.position() or {}).name,capabilities=capabilities()}
   end
   local function ready(session)
     installWorld(session);S.connected=true;S.status='connected'
@@ -122,7 +138,7 @@ return function(mod, loadLocal, adapter)
       S.peerCapabilities=type(msg.capabilities)=='table' and msg.capabilities or{}
       if S.host and not S.connected then
         local id=tostring(os.time())..'-'..tostring(love.math.random(1,2147483646))
-        ready(id);send{type='world_welcome',protocol=1,session=id,generation=adapter.generation,game=adapter.game,capabilities=adapter.capabilities and adapter.capabilities()or{}}
+        ready(id);send{type='world_welcome',protocol=1,session=id,generation=adapter.generation,game=adapter.game,capabilities=capabilities()}
       end
       return
     end
@@ -132,6 +148,7 @@ return function(mod, loadLocal, adapter)
     end
     if not S.connected or msg.session~=S.session then return end
     if activities.handle(msg)then return end
+    if skies.handle(msg)then return end
     if msg.type=='world_position'then
       local p=position(msg.position)
       if p and finite(msg.sequence) and msg.sequence>(S.remoteSequence or 0)then
@@ -159,6 +176,7 @@ return function(mod, loadLocal, adapter)
     for _,msg in ipairs(net:poll())do handle(msg);if not net then return end end
     if not S.connected then return end
     configureProvider();activities.update(dt);client:update(dt);if authority then authority:update(dt)end
+    skies.update(dt)
     tick=tick+dt
     if tick<.1 then return end
     tick=tick%.1;sequence=sequence+1
