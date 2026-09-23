@@ -1,3 +1,9 @@
+## 0.8.0-test.1 — 2026-09-22
+
+Optional Gen 1 paired-action online doubles using native party clones, handshake, turn hashes and room cleanup. Existing single/trade paths retained.
+
+**TEST PRERELEASE — published before gameplay testing at the user’s request.** Build/compile validation only at publication. Gen 1 online doubles and the new door/healing projection require native gameplay verification; advanced move effects and disconnect combinations may need corrections. Existing stable releases remain unchanged.
+
 ## 0.7.0 — 2026-09-22
 
 Synchronizes optional Dramatic Ride mounts, riders, direction, movement and flight height. Adds optional Crystal online doubles over native cloned-party link battles with paired actions and turn verification. Prevents the room menu from interrupting battle setup.

@@ -1,3 +1,5 @@
+> Test build 0.8.0-test.1: Optional Gen 1 paired-action online doubles using native party clones, handshake, turn hashes and room cleanup. Existing single/trade paths retained. Gameplay verification pending.
+
 **0.7.0: Synchronized rides and Crystal online doubles.** Synchronizes optional Dramatic Ride mounts, riders, direction, movement and flight height. Adds optional Crystal online doubles over native cloned-party link battles with paired actions and turn verification. Prevents the room menu from interrupting battle setup.
 
 Known limits: Gen 1 online doubles remain unavailable. The full mixed-mod and disconnect matrix is not certified.

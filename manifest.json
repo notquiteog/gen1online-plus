@@ -1,7 +1,7 @@
 {
   "id": "gen1online-plus",
   "name": "Gen1Online+",
-  "version": "0.7.0",
+  "version": "0.8.0-test.1",
   "entry": "main.lua",
   "author": "Gamecorner33, martin2844 (Original Blackjack Mod Creator), and Antigravity",
   "description": "Two-player rooms, overworld presence, chat, native singles and trading across Gen 1/2/3; optional Crystal and native Gen 3 doubles, ride synchronization and host-owned Wilds.",

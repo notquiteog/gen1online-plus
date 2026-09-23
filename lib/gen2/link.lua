@@ -4,12 +4,13 @@ return function(mod,adapter)
   local Session=require('src.link.Session')
   local Handshake=require('src.link.Handshake')
   local Protocol=require('src.link.Protocol')
-  local LinkBattle=require('src.link.LinkBattle2')
+  local gen=adapter.generation or 2
+  local LinkBattle=require(gen==1 and 'src.link.LinkBattle'or'src.link.LinkBattle2')
   local TradeScreen=assert((loadstring or load)(assert(mod:read('lib/gen2/trade.lua')),'@online/gen2/trade'))()
   local Doubles=assert((loadstring or load)(assert(mod:read('lib/crossgen/double_link.lua')),'@online/double_link'))()
   local function provider()
     local m=mod.find and mod.find('double_battles');local p=m and m.exports and m.exports.online
-    return p and p.protocol==1 and p.generation==2 and p.attach and p.supportsDouble() and p or nil
+    return p and p.protocol==1 and p.generation==gen and p.attach and p.supportsDouble() and p or nil
   end
   local current
   function adapter.capabilities()return {single=true,trade=true,double=provider()~=nil}end
@@ -48,7 +49,7 @@ return function(mod,adapter)
           if not screen then finish(why or 'trade failed');return end
           c.screen=screen;game.linkSession=true;game.stack:push(screen);return
         end
-        c.mine=Protocol.packParty2(game.save.party)
+        c.mine=(gen==1 and Protocol.packParty or Protocol.packParty2)(game.save.party)
         c.seed=c.host and love.math.random(1,2^30)or nil
         c.net:send{type='room_party2',mons=c.mine,seed=c.seed}
       end
@@ -65,10 +66,13 @@ return function(mod,adapter)
         local proxy=c.mode=='double'and Doubles.transport(c.net)or c.net
         local screen,why=(c.host and LinkBattle.newHost or LinkBattle.newGuest)(game,proxy,opts)
         if screen and c.mode=='double'then
-          local ok,err=Doubles.attach(screen,proxy,provider(),c.host)
-          if not ok then finish(err);return end
+          local attach=Doubles.attach
+          if gen==1 then attach=assert(load(assert(mod:read('lib/crossgen/double_link1.lua')),'@online/double_link1'))().attach end
+          local ok,err=attach(screen,proxy,provider(),c.host)
+          if not ok then game.linkNet=nil;c.net:close();finish(err);return end
         end
         if not screen then finish(why or 'battle failed');return end
+        if gen==1 then local done=screen.finish;screen.finish=function(s,...) local result=s.result;local out=done(s,...);if s.linkEnded then finish(result)end;return out end end
         c.screen=screen;screen.onFinish=finish;game.linkSession=true;game.stack:push(screen)
       end
     end
