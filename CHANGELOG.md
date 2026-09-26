@@ -1,3 +1,9 @@
+## 0.8.1 — Quiet optional follower diagnostics
+
+Optional legacy follower-asset status now goes to the diagnostic log rather than opening a blocking dialogue during play. This removes the startup overlay seen over Crystal interiors; asset fallback behavior is unchanged.
+
+Gen1 online doubles with Double Battles 0.12.1 passed a twelve-turn local ENet fixture on Gen1Recomp 0.3.20, including unequal presentation clocks, final-state confirmation and retained transport. Internet latency, every move combination and full cross-generation parity remain separate verification work.
+
 ## 0.8.0 — 2026-09-22
 
 Includes optional cross-generation riding and host-owned ground/sky encounter synchronization, chat, trading and single/double battle integration. Multiplayer move/disconnect edge cases still need wider coverage.

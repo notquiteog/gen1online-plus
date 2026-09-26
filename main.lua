@@ -3197,7 +3197,7 @@
     end
   end)
 
-  -- PokeEmerald Decomp Asset Status Check & Notification
+  -- Optional legacy follower assets are diagnostics, not a blocking dialogue.
   local hasCheckedEmeraldAssets = false
   local function checkEmeraldAssetsStartup(game)
     if hasCheckedEmeraldAssets then return end
@@ -3232,7 +3232,7 @@
       statusMsg = "POKEEMERALD ASSETS:\nNOT FOUND (OPTIONAL)\nFOLLOWERS USING FALLBACK\nSEE README_ASSETS.MD"
     end
 
-    game.stack:push(TextBox.new(game, wrapText(statusMsg)))
+    print('[Gen1Online+] '..statusMsg:gsub('\n',' '))
   end
 
 

@@ -1,3 +1,9 @@
+## 0.8.1 — 2026-09-26
+
+Optional legacy follower-asset status now goes to the diagnostic log rather than opening a blocking dialogue during play. This removes the startup overlay seen over Crystal interiors; asset fallback behavior is unchanged.
+
+Gen1 online doubles with Double Battles 0.12.1 passed a twelve-turn local ENet fixture on Gen1Recomp 0.3.20, including unequal presentation clocks, final-state confirmation and retained transport. Internet latency, every move combination and full cross-generation parity remain separate verification work.
+
 # Test release checkpoint — 2026-09-22 (gameplay verification pending)
 
 User explicitly requested publication before gameplay testing to conserve their
