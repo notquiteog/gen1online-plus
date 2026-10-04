@@ -1,3 +1,11 @@
+## 0.9.0 — 2026-10-04
+
+Corrects the battle setup mode encoding for the 0.3.51 wire schema. Two Emerald clients reached native single/double command phases and trade party selection, then restored HP/PP on disconnect; full battle outcomes and trade completion were not tested.
+
+Use named native party save/heal/restore operations for Emerald and FRLG link battles; preserve the safe legacy FRLG fallback. Chat bubbles resolve the shared Gen3 camera export.
+
+Tested against official Gen1Recomp 0.3.51. Existing games retain their native data and defaults. See Battle Art’s Emerald QA record for the exact integration coverage and remaining gaps.
+
 ## 0.8.0 — 2026-09-22
 
 Includes optional cross-generation riding and host-owned ground/sky encounter synchronization, chat, trading and single/double battle integration. Multiplayer move/disconnect edge cases still need wider coverage.

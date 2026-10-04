@@ -4,6 +4,14 @@ return function(mod,adapter)
   local Link=require('src.core.game3.link')
   local LB=require('src.core.game3.link.battle')
   local LT=require('src.core.game3.link.trade')
+  -- Special numbers differ between FRLG and Emerald. Prefer the engine's
+  -- named dispatch; retain the old FRLG seam only on older FRLG engines.
+  local function special(ctx,adapters,name)
+    if Link.callSpecialNamed then return Link.callSpecialNamed(ctx,adapters,name) end
+    local GV=require('src.core.GameVersion')
+    if GV.get()~='firered' and GV.get()~='leafgreen' then return false end
+    return Link.callSpecial(ctx,adapters,({SavePlayerParty=0x27,LoadPlayerParty=0x28,HealPlayerParty=0})[name])
+  end
   local current
   function adapter.capabilities()
     local found=mod.find and mod.find('double_battles')
@@ -20,6 +28,17 @@ return function(mod,adapter)
     elseif not game.session.party or #game.session.party==0 then return false,'No Pokemon to trade' end
     LB.reset();LT.reset()
     current={mode=mode,host=host,done=onDone,elapsed=0}
+    -- Gen1Recomp 0.3.51's wire schema expects a string battle mode, while
+    -- native LB.sendSetup supplies its numeric enum. Encode only our channel;
+    -- leave the engine validator and all other packet fields untouched.
+    local send=transport.send
+    if send then transport.send=function(self,msg)
+      if msg.type==LB.MSG.SETUP and type(msg.mode)=='number' then
+        local copy={};for k,v in pairs(msg)do copy[k]=v end
+        copy.mode=tostring(msg.mode);msg=copy
+      end
+      return send(self,msg)
+    end end
     local link,why=Link.open{transport=transport,role=host and 'host'or'guest',linkType=kind,game=game}
     if not link then current=nil;return false,why end
     current.link=link;return true
@@ -28,7 +47,7 @@ return function(mod,adapter)
     local c=current;if not c or c.finished then return end
     c.finished=true
     if c.savedParty then
-      local ctx,adapters=Link.vmCtx();Link.callSpecial(ctx,adapters,0x28);Link.savePlayerBag();c.savedParty=false
+      local ctx,adapters=Link.vmCtx();special(ctx,adapters,'LoadPlayerParty');Link.savePlayerBag();c.savedParty=false
     end
     c.done(why or 'link failed')
   end
@@ -45,14 +64,16 @@ return function(mod,adapter)
         LB.unionRoom=false;LB.state='setup';LB.seed=c.host and LB.dealSeed()or nil
         local ctx,adapters=Link.vmCtx()
         -- Preserve the actual party before healing for a fair link match.
-        Link.callSpecial(ctx,adapters,0x27);c.savedParty=true
-        Link.loadPlayerBag();Link.callSpecial(ctx,adapters,0x00)
+        if not special(ctx,adapters,'SavePlayerParty') then fail('Party backup unavailable');return end
+        c.savedParty=true
+        Link.loadPlayerBag()
+        if not special(ctx,adapters,'HealPlayerParty') then fail('Party preparation unavailable');return end
         if c.host then LB.sendSetup();c.sent=true end
       end
     end
     if c.prepared and c.mode~='trade' and not c.started then
       c.setup=c.setup or c.link:take(LB.MSG.SETUP)
-      if c.setup and c.setup.mode~=LB.mode then fail('battle mode mismatch');return end
+      if c.setup and tonumber(c.setup.mode)~=LB.mode then fail('battle mode mismatch');return end
       if c.setup and not c.host and not c.sent then
         LB.seed=tonumber(c.setup.seed)
         if not LB.seed then fail('missing battle seed');return end

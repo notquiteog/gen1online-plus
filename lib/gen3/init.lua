@@ -53,5 +53,5 @@ return function(mod)
   loadLocal('lib/crossgen/ui.lua')(mod,session,adapter)
   mod.exports.multiplayer=session
   mod.exports.netNpcs=function()return remote and {remote}or{}end
-  mod.log:info('Native FireRed online world adapter loaded')
+  mod.log:info('Native Gen3 online world adapter loaded')
 end

@@ -99,7 +99,8 @@ return function(mod, session, adapter)
     local here=adapter.position();if not here or p.map~=here.map or here.busy then return end
     local other=mod.find and mod.find('BATTLE_ART_VOXEL_FORK')
     local art=other and other.exports
-    local active=art and art.firered and art.firered.camera and art.firered.camera.active
+    local scene=art and (art.gen3 or art.firered)
+    local active=scene and scene.camera and scene.camera.active
     if adapter.generation~=3 then
       local ok,P=pcall(require,'src.render.Pipelines')
       active=ok and P and P.level and P.level('voxel')>0
