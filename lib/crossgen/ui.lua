@@ -2,7 +2,6 @@
 -- remain generation-native. It only consumes controls while explicitly open.
 return function(mod, session, adapter)
   local UI={open=false,selection=1,text='',mode='menu'}
-  local font
   local function game()return mod.world.game end
   local function quietInput()
     local input=game() and game().input
@@ -91,7 +90,7 @@ return function(mod, session, adapter)
   end)
   mod.hooks:wrap('ui.start_menu.items',function(nextFn,g,items)
     local list=nextFn(g,items) or items
-    if type(list)=='table'then list[#list+1]={label='MULTIPLAYER ROOM',onSelect=function()UI.show()end}end
+    if type(list)=='table'then list[#list+1]={label='ONLINE',onSelect=function()UI.show()end}end
     return list
   end)
   local function bubblePoint(p,v)
@@ -122,55 +121,88 @@ return function(mod, session, adapter)
   end
   mod.hooks:wrap('render.hud',function(nextFn,g,v)
     nextFn(g,v)
-    font=font or love.graphics.newFont(18);font:setFilter('nearest','nearest')
-    love.graphics.push('all');love.graphics.origin();love.graphics.setShader();love.graphics.setFont(font)
-    local function plate(x,y,w,h)
-      love.graphics.setColor(.08,.12,.19,.94);love.graphics.rectangle('fill',x,y,w,h,5,5)
-      love.graphics.setColor(.75,.82,.92,1);love.graphics.rectangle('line',x+.5,y+.5,w-1,h-1,5,5)
-    end
-    if not UI.open then
-      local shown,placed={},{}
-      for i=#session.chat,1,-1 do
-        local msg=session.chat[i];local who=msg.localSender and 'local' or 'remote'
-        if msg.age<7 and not shown[who]then
-          shown[who]=true
-          local p=msg.localSender and adapter.position()or session.peers.remote
-          local x,y=bubblePoint(p,v)
-          if x and y and x>=0 and x<=v.width and y>=0 and y<=v.height then
-            local width=math.min(280,math.max(80,font:getWidth(msg.text)+20))
-            local _,lines=font:getWrap(msg.text,width-20);local height=#lines*font:getHeight()+16
-            x=math.floor(math.max(4,math.min(v.width-width-4,x-width/2)));y=math.floor(math.max(4,y-height))
-            for _,other in ipairs(placed)do
-              if x<other.x+other.w+4 and x+width+4>other.x
-                and y<other.y+other.h+4 and y+height+4>other.y then
-                local above=other.y-height-5
-                y=above>=4 and above or other.y+other.h+5
-              end
+    if not UI.open and #session.chat==0 then return end
+    local gen3=adapter.generation==3
+    local Font=require(gen3 and 'src.ui.game3.font' or 'src.render.Font')
+    local Window=gen3 and require('src.ui.game3.window')or nil
+    local width,height=gen3 and 240 or 160,gen3 and 160 or 144
+    local pitch=gen3 and 16 or 12
+    local scale=math.max(1,math.floor(math.min(v.width/width,v.height/height)))
+    local ox,oy=math.floor((v.width-width*scale)/2),math.floor((v.height-height*scale)/2)
+    local gfx=love.graphics;gfx.push('all')
+    local ok,err=pcall(function()
+      gfx.origin();gfx.setShader();gfx.translate(ox,oy);gfx.scale(scale);gfx.setColor(1,1,1,1)
+      local function measure(t)return gen3 and Font.measure(t)or Font.width(t)end
+      local function text(t,x,y,w)
+        if gen3 then Font.draw(t,x,y,{maxWidth=w,colors=Font.COLOR.NORMAL})else Font.draw(t,x,y)end
+      end
+      local function plate(x,y,w,h)
+        if gen3 then local tpl=Window.template(x/8,y/8,w/8,h/8);Window.fill(tpl);Window.stdFrame(tpl)
+        else
+          gfx.push();gfx.translate(x,y);Font.drawBox(0,0,math.ceil(w/8),math.ceil(h/8));gfx.pop()
+        end
+      end
+      -- Preserve message text/network payload. Wrap only its visual copy using
+      -- the active game font, including fonts supplied by translation mods.
+      local function lines(value,maxWidth)
+        local out,line={},''
+        for ch in tostring(value or ''):gmatch('[%z\1-\127\194-\244][\128-\191]*')do
+          if ch=='\n' then out[#out+1]=line;line=''
+          else
+            if line~=''and measure(line..ch)>maxWidth then out[#out+1]=line;line=''end
+            line=line..ch
+          end
+        end
+        out[#out+1]=line;return out
+      end
+      local function block(value,x,y,w,count,tail)
+        local list=lines(value,w);local first=tail and math.max(1,#list-count+1)or 1
+        for i=first,math.min(#list,first+count-1)do text(list[i],x,y+(i-first)*pitch,w)end
+      end
+      if UI.open then
+        plate(8,8,width-16,height-16)
+        text(UI.mode=='menu'and'MULTIPLAYER'or UI.mode=='chat'and'CHAT'or UI.mode=='join-online'and'ROOM CODE'or'HOST ADDRESS',16,16,width-32)
+        if UI.mode=='menu'then
+          local list=rows();local count=math.max(1,math.floor((height-76)/pitch))
+          local first=math.max(1,UI.selection-count+1)
+          for i=first,math.min(#list,first+count-1)do
+            local y=34+(i-first)*pitch
+            if i==UI.selection then
+              if gen3 then Window.cursorPx(16,y)else Font.drawCode(require('src.ui.Theme').cursor,16,y)end
             end
-            placed[#placed+1]={x=x,y=y,w=width,h=height}
-            plate(x,y,width,height);love.graphics.setColor(1,1,1,1);love.graphics.printf(msg.text,x+10,y+8,width-20,'left')
+            local label=({['HOST ONLINE ROOM']='HOST ONLINE',['JOIN ONLINE ROOM']='JOIN ONLINE',['ACCEPT INVITATION']='ACCEPT',['DECLINE INVITATION']='DECLINE'})[list[i]]or list[i]
+            block(label,26,y,width-42,1)
+          end
+          block(session.code and('Room: '..session.code)or session.address and('Address: '..session.address)or session.status or'F8/F9: chat',16,height-40,width-32,1)
+        else block(UI.text..'-',16,38,width-32,math.max(1,math.floor((height-82)/pitch)),true)end
+        block(UI.error or session.notice or'ENTER OK  ESC X',16,height-24,width-32,1)
+      else
+        local shown,placed={},{}
+        for i=#session.chat,1,-1 do
+          local msg=session.chat[i];local who=msg.localSender and'local'or'remote'
+          if msg.age<7 and not shown[who]then
+            shown[who]=true
+            local p=msg.localSender and adapter.position()or session.peers.remote
+            local x,y=bubblePoint(p,v)
+            if x and y and x>=0 and x<=v.width and y>=0 and y<=v.height then
+              x,y=(x-ox)/scale,(y-oy)/scale
+              local w=math.min(width-16,math.max(64,math.ceil((measure(msg.text)+16)/8)*8))
+              local count=math.min(3,#lines(msg.text,w-16));local h=math.ceil((count*pitch+16)/8)*8
+              x=math.floor(math.max(8,math.min(width-w-8,x-w/2)));y=math.floor(math.max(8,math.min(height-h-8,y-h)))
+              for _,other in ipairs(placed)do
+                if x<other.x+other.w and x+w>other.x and y<other.y+other.h and y+h>other.y then
+                  y=other.y-h-4
+                  if y<8 then y=math.min(height-h-8,other.y+other.h+4)end
+                end
+              end
+              placed[#placed+1]={x=x,y=y,w=w,h=h}
+              plate(x,y,w,h);block(msg.text,x+8,y+8,w-16,count)
+            end
           end
         end
       end
-    else
-      local w=math.min(540,v.width-24);local h=UI.mode=='menu'and math.max(310,118+#rows()*32) or 190
-      local x,y=math.floor((v.width-w)/2),math.floor((v.height-h)/2)
-      plate(x,y,w,h);love.graphics.setColor(1,1,1,1)
-      love.graphics.print(UI.mode=='menu' and 'MULTIPLAYER' or UI.mode=='chat' and 'CHAT' or UI.mode=='join-online' and 'ROOM CODE' or 'HOST ADDRESS',x+20,y+16)
-      if UI.mode=='menu'then
-        for i,label in ipairs(rows())do
-          love.graphics.setColor(i==UI.selection and .95 or .72,i==UI.selection and .83 or .78,i==UI.selection and .38 or .86,1)
-          love.graphics.print((i==UI.selection and '> 'or '  ')..label,x+20,y+50+(i-1)*32)
-        end
-        love.graphics.setColor(.85,.9,1,1)
-        love.graphics.printf(session.code and ('Room: '..session.code)or session.address and ('Address: '..session.address)or (session.activity and (session.activity.status..': '..session.activity.mode)) or session.status or 'F8: room   F9: chat',x+20,y+h-64,w-40)
-      else
-        love.graphics.printf(UI.text..'_',x+20,y+52,w-40,'left')
-      end
-      love.graphics.setColor(.95,.8,.6,1)
-      love.graphics.printf(UI.error or session.notice or 'Enter: select/send    Esc: close',x+20,y+h-32,w-40)
-    end
-    love.graphics.pop()
+    end)
+    gfx.pop();if not ok then error(err,0)end
   end)
   local function nearPeer()
     local p,q=adapter.position(),session.peers.remote

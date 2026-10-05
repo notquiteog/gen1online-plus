@@ -1,3 +1,7 @@
+## Unreleased
+
+Use native generation fonts and window frames for cross-generation room/chat overlays and bubbles. Fit the pause entry as ONLINE; scroll menus and wrap display text without changing chat payloads or network authority. Native menu/chat renders inspected in Yellow, Crystal, Emerald and LeafGreen; Emerald bubble inspected. Shared room activity and rendering contracts pass. Full Unicode font availability and overlapping bubbles still need broader device checks.
+
 ## 0.9.1 — 2026-10-04
 
 Packaging refresh for the coordinated Battle Art 1.31.0 cart release. Runtime behavior is unchanged from 0.9.0. Companions remain optional; no new gameplay or multiplayer verification is claimed. Requires Gen1Recomp 0.3.51 or newer for the bundled carts.
