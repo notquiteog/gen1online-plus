@@ -487,7 +487,7 @@
     return false, nil, nil, nil, nil
   end
 
-  local MOD_VERSION = "0.9.0"
+  local MOD_VERSION = "0.9.1"
 
   -- Generation detection: Crystal is Gen 2; this build targets Crystal only.
   local currentGeneration = "gen1"

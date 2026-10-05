@@ -1,3 +1,7 @@
+## 0.9.1 — 2026-10-04
+
+Packaging refresh for the coordinated Battle Art 1.31.0 cart release. Runtime behavior is unchanged from 0.9.0. Companions remain optional; no new gameplay or multiplayer verification is claimed. Requires Gen1Recomp 0.3.51 or newer for the bundled carts.
+
 ## 0.9.0 — 2026-10-04
 
 Corrects the battle setup mode encoding for the 0.3.51 wire schema. Two Emerald clients reached native single/double command phases and trade party selection, then restored HP/PP on disconnect; full battle outcomes and trade completion were not tested.
