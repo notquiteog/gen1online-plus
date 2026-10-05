@@ -1,3 +1,7 @@
+## 0.9.2 — 2026-10-05
+
+Use each generation native fonts and frames for room, chat and optional chat-bubble overlays; preserve chat payloads and native menu selection. Cross-generation rendering and room UI tests pass; Yellow/Crystal/Emerald/LeafGreen room and chat captures inspected. GB in-world bubbles and exhaustive network edge cases remain unverified.
+
 ## Unreleased
 
 Use native generation fonts and window frames for cross-generation room/chat overlays and bubbles. Fit the pause entry as ONLINE; scroll menus and wrap display text without changing chat payloads or network authority. Native menu/chat renders inspected in Yellow, Crystal, Emerald and LeafGreen; Emerald bubble inspected. Shared room activity and rendering contracts pass. Full Unicode font availability and overlapping bubbles still need broader device checks.
