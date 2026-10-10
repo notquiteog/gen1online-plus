@@ -105,7 +105,7 @@ return function(mod, session, adapter)
       active=ok and P and P.level and P.level('voxel')>0
     end
     if active and art and art.lib then
-      local R=art.lib.require('Voxel3D');local x,y=R.project(p.px+8,38,p.py+16)
+      local R=art.lib.require('Voxel3D');local x,y=R.project(p.px+8,38+(tonumber(p.height)or 0),p.py+16)
       local w,h=R.size();if x and w>0 and h>0 then return x/w*v.width,y/h*v.height end
       return
     end
@@ -128,6 +128,13 @@ return function(mod, session, adapter)
     local width,height=gen3 and 240 or 160,gen3 and 160 or 144
     local pitch=gen3 and 16 or 12
     local scale=math.max(1,math.floor(math.min(v.width/width,v.height/height)))
+    -- Room menus use the native screen scale. Overworld bubbles are compact
+    -- annotations: integer font scaling keeps pixels sharp without covering
+    -- several trainers at modern resolutions (including the 3D camera).
+    if not UI.open then
+      scale=math.max(1,math.floor(scale/2))
+      width,height=math.floor(v.width/scale),math.floor(v.height/scale)
+    end
     local ox,oy=math.floor((v.width-width*scale)/2),math.floor((v.height-height*scale)/2)
     local gfx=love.graphics;gfx.push('all')
     local ok,err=pcall(function()
@@ -186,7 +193,7 @@ return function(mod, session, adapter)
             local x,y=bubblePoint(p,v)
             if x and y and x>=0 and x<=v.width and y>=0 and y<=v.height then
               x,y=(x-ox)/scale,(y-oy)/scale
-              local w=math.min(width-16,math.max(64,math.ceil((measure(msg.text)+16)/8)*8))
+              local w=math.min(width-16,gen3 and 160 or 128,math.max(64,math.ceil((measure(msg.text)+16)/8)*8))
               local count=math.min(3,#lines(msg.text,w-16));local h=math.ceil((count*pitch+16)/8)*8
               x=math.floor(math.max(8,math.min(width-w-8,x-w/2)));y=math.floor(math.max(8,math.min(height-h-8,y-h)))
               for _,other in ipairs(placed)do
