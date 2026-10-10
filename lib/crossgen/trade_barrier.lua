@@ -2,7 +2,8 @@
 -- external relay cannot see its trade confirmations. Coordinate that channel
 -- only: both native transaction digests must agree before either side commits.
 local M={}
-function M.wrap(transport,host)
+function M.wrap(transport,host,confirmation)
+ confirmation=confirmation or'game3_trade_confirm'
  if not host then return transport end
  local send,poll=assert(transport.send),assert(transport.poll)
  local own,peer,decided,committed,queued,round=nil,nil,false,false,{},0
@@ -27,7 +28,7 @@ function M.wrap(transport,host)
    own,peer=nil,nil;return
   end
   if decided then return end
-  if msg.type=='game3_trade_confirm'and valid(msg.digest)then
+  if msg.type==confirmation and valid(msg.digest)then
    if localSender then own=msg.digest else peer=msg.digest end
    decide()
   end

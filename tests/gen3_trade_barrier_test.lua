@@ -1,4 +1,4 @@
-local Barrier=dofile('lib/gen3/trade_barrier.lua')
+local Barrier=dofile('lib/crossgen/trade_barrier.lua')
 local function pair()
  local h,g={inbox={}},{inbox={}}
  for _,v in ipairs{h,g}do function v:poll()local q=self.inbox;self.inbox={};return q end end
