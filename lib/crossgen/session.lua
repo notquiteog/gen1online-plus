@@ -5,7 +5,7 @@ return function(mod, loadLocal, adapter)
   local SharedWorld = loadLocal('lib/crossgen/shared_world.lua')
   local S = { connected = false, peers = {}, chat = {}, channels = {} }
   local discovery=loadLocal('lib/crossgen/discovery.lua').new(adapter.game,adapter.generation)
-  local net, authority, client, provider, config, activities
+  local net, authority, client, provider, config, activities, lanPort
   local tick, sequence = 0, 0
   local function validToken(s) return type(s)=='string' and #s>0 and #s<=128 end
   local function finite(n) return type(n)=='number' and n==n and math.abs(n)<1e7 end
@@ -74,6 +74,7 @@ return function(mod, loadLocal, adapter)
     if provider then provider.configure(config) end
   end
   function S.disconnect(reason)
+    lanPort=nil
     discovery.stop();S.status=nil;S.address=nil;S.code=nil;S.sentHello=nil
     skies.clear()
     S.connected=false;S.notice=reason;S.peers={}
@@ -95,6 +96,7 @@ return function(mod, loadLocal, adapter)
     port=tonumber(port)or Net.defaultPort()
     local ok,why=start(true,'host',port)
     if ok then
+      lanPort=port
       S.status='Waiting for player';S.address=net.address
       local found,err=discovery.host(port,(adapter.position()or{}).name)
       if not found then S.notice=err end
@@ -192,7 +194,19 @@ return function(mod, loadLocal, adapter)
     if not net then return end
     net:update()
     S.address,S.code=net.address,net.code
-    if net.closed or net.error then S.disconnect(net.error or 'Disconnected');return end
+    if net.closed or net.error then
+      -- The native transport is a two-peer link and closes on departure.
+      -- A LAN room remains hosted until its owner explicitly disconnects.
+      -- Restart once after a completed handshake; bind/listen errors never
+      -- recurse or silently switch ports. Native activity cleanup runs first.
+      local port=S.host and S.connected and lanPort
+      local reason=net.error or 'Disconnected'
+      if port then
+        local ok=S.hostLan(port)
+        if ok then S.notice='Player left; waiting for player' end
+      else S.disconnect(reason)end
+      return
+    end
     if net.paired and not S.sentHello then S.sentHello=true;hello()end
     for _,msg in ipairs(net:poll())do handle(msg);if not net then return end end
     if not S.connected then return end
