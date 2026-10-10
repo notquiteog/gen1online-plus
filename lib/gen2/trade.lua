@@ -1,7 +1,7 @@
--- Live Crystal trade UI over the engine's generation-aware trade protocol.
+-- Live Gen2 trade UI over the engine's generation-aware trade protocol.
 -- Save through Game2's normal writer; launcher/offline slot writers are never
 -- used against a running save. Native trade/evolution screens own their art.
-return function(game,net,peerName,onDone)
+return function(game,net,peerName,onDone,TradeSession,host)
   local Trade=require('src.online.Trade')
   local Protocol=require('src.link.Protocol')
   local Chrome=require('src.ui.gen2.Chrome')
@@ -9,7 +9,7 @@ return function(game,net,peerName,onDone)
   local Screens=require('src.ui.Screens')
   local Evolution=require('src.core.gen2.Evolution')
   local handle={generation=2,data=game.data,save=game.save,party=game.save.party}
-  local remote,why=Trade.remote(handle,net,{strict=true,peerName=peerName})
+  local remote,why=TradeSession.new(game.data,game.save.party,net,host,peerName)
   if not remote then return nil,why end
   local screen={game=game,remote=remote,index=1,isOpaque=true,screenId='OnlineCrystalTrade',phase='select'}
   local finished,committed=false,false
@@ -66,7 +66,14 @@ return function(game,net,peerName,onDone)
     end})
   end
   function screen:update()
-    if finished or committed then return end
+    -- Evolution/learn-move screens may still cover this screen when their
+    -- completion callback fires. Remove only our own state once it is top;
+    -- never pop the native screen above it or leave a finished trade frozen.
+    if finished then
+      if game.stack:top()==self then game.stack:pop()end
+      return
+    end
+    if committed then return end
     local stage=remote:update();local t=remote.session
     if stage=='cancelled'then return self:finish(t.error or 'trade cancelled')end
     if stage=='done'then return self:commit()end

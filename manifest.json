@@ -10,7 +10,7 @@
   "api": 2,
   "games": [
     "gen1",
-    "crystal",
+    "gen2",
     "gen3"
   ],
   "optional_dependencies": [

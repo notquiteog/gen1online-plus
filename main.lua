@@ -489,13 +489,13 @@
 
   local MOD_VERSION = "0.9.1"
 
-  -- Generation detection: Crystal is Gen 2; this build targets Crystal only.
+  -- All native Gen2 editions share the live world adapter and keep separate saves.
   local currentGeneration = "gen1"
   do
     local okGv, GvMod = pcall(require, "src.core.GameVersion")
     if okGv and GvMod and GvMod.get then
       local vid = GvMod.get()
-      if vid == "crystal" then
+      if vid == "gold" or vid == "silver" or vid == "crystal" then
         currentGeneration = "gen2"
       end
     end
@@ -2101,7 +2101,7 @@
     if isGen2 then
       local okGen2Save, Gen2SaveModule = pcall(require, "src.core.gen2.Save")
       if okGen2Save and Gen2SaveModule and Gen2SaveModule.load then
-        local data = Gen2SaveModule.load("crystal")
+        local data = Gen2SaveModule.load(require('src.core.GameVersion').get())
         if data then return data end
       end
     end

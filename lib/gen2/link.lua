@@ -1,4 +1,4 @@
--- Crystal's native LinkBattle2 handles turn hashes, held items, forced
+-- Gen2's native LinkBattle2 handles turn hashes, held items, forced
 -- replacements and mirrored RNG order. Keep its normal compatibility check.
 return function(mod,adapter)
   local Session=require('src.link.Session')
@@ -6,6 +6,8 @@ return function(mod,adapter)
   local Protocol=require('src.link.Protocol')
   local gen=adapter.generation or 2
   local LinkBattle=require(gen==1 and 'src.link.LinkBattle'or'src.link.LinkBattle2')
+  local TradeBarrier=assert(load(assert(mod:read('lib/crossgen/trade_barrier.lua')),'@online/trade_barrier'))()
+  local TradeSession=assert(load(assert(mod:read('lib/gen2/trade_session.lua')),'@online/gen2/trade_session'))()
   local TradeScreen=assert((loadstring or load)(assert(mod:read('lib/gen2/trade.lua')),'@online/gen2/trade'))()
   local Doubles=assert((loadstring or load)(assert(mod:read('lib/crossgen/double_link.lua')),'@online/double_link'))()
   local function provider()
@@ -20,6 +22,7 @@ return function(mod,adapter)
     if mode=='double'and not provider()then return false,'Double Battles is required for doubles.'end
     local game=mod.world.game
     if not(game.save and game.save.party and #game.save.party>0)then return false,'No Pokemon in party'end
+    if mode=='trade'then TradeBarrier.wrap(transport,host,'trade_confirm')end
     local net=Session.new(transport,{role=host and 'host'or'guest',kind='link'})
     local hello=Handshake.hello(game,mode=='trade'and'trade'or'battle')
     current={net=net,hello=hello,host=host,done=onDone,elapsed=0,mode=mode}
@@ -45,7 +48,7 @@ return function(mod,adapter)
         if not Handshake.battleAllowed(c.verdict)then finish('incompatible games or battle mods');return end
         local game=mod.world.game
         if c.mode=='trade'then
-          local screen,why=TradeScreen(game,c.net,c.peer.name,finish)
+          local screen,why=TradeScreen(game,c.net,c.peer.name,finish,TradeSession,c.host)
           if not screen then finish(why or 'trade failed');return end
           c.screen=screen;game.linkSession=true;game.stack:push(screen);return
         end
