@@ -1,6 +1,6 @@
 -- Native FRLG battle/trade protocol over the persistent room's virtual link.
 -- Gen3Link performs its normal version/fingerprint handshake on both endpoints.
-return function(mod,adapter)
+return function(mod,adapter,TradeBarrier)
   local Link=require('src.core.game3.link')
   local LB=require('src.core.game3.link.battle')
   local LT=require('src.core.game3.link.trade')
@@ -25,6 +25,10 @@ return function(mod,adapter)
   end
   function adapter.startActivity(mode,transport,host,onDone)
     if current then return false,'Native link already active' end
+    if mode=='trade' then
+      if not TradeBarrier then return false,'Native trade coordinator unavailable' end
+      transport=TradeBarrier.wrap(transport,host)
+    end
     local game=mod.world.game
     local kind=mode=='trade' and 0x1111 or mode=='double' and 0x2244 or 0x2233
     if mode~='trade'then

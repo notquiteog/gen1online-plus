@@ -48,7 +48,7 @@ return function(mod)
     if remote and remote.map==Map.current then rows[#rows+1]=remote end
     return rows
   end
-  loadLocal('lib/gen3/link.lua')(mod,adapter)
+  loadLocal('lib/gen3/link.lua')(mod,adapter,loadLocal('lib/gen3/trade_barrier.lua'))
   local session=loadLocal('lib/crossgen/session.lua')(mod,loadLocal,adapter)
   loadLocal('lib/crossgen/ui.lua')(mod,session,adapter)
   mod.exports.multiplayer=session
