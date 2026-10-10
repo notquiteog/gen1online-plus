@@ -7,8 +7,13 @@ return function(mod,adapter)
   -- Special numbers differ between FRLG and Emerald. Prefer the engine's
   -- named dispatch; retain the old FRLG seam only on older FRLG engines.
   local function special(ctx,adapters,name)
-    if Link.callSpecialNamed then return Link.callSpecialNamed(ctx,adapters,name) end
     local GV=require('src.core.GameVersion')
+    -- Ruby/Sapphire expose the same native healing operation under their
+    -- source symbol; Emerald/FRLG use HealPlayerParty. Never guess special IDs.
+    if Link.callSpecialNamed then
+      if name=='HealPlayerParty'and (GV.get()=='ruby'or GV.get()=='sapphire')then name='ScrSpecial_HealPlayerParty'end
+      return Link.callSpecialNamed(ctx,adapters,name)
+    end
     if GV.get()~='firered' and GV.get()~='leafgreen' then return false end
     return Link.callSpecial(ctx,adapters,({SavePlayerParty=0x27,LoadPlayerParty=0x28,HealPlayerParty=0})[name])
   end
