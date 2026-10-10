@@ -6848,13 +6848,6 @@ return function(mod)
     pawnLedgerKey = "pawned_pokemon",
   }
 
-  if mod.options and mod.options.define then
-    pcall(function()
-      mod.options:define({
-        { key = "shiny_sparkles", label = "SHINY SPARKLES", type = "toggle", default = true },
-      })
-    end)
-  end
   if mod.content and mod.content.constants and mod.content.constants.patch then
     pcall(function() mod.content.constants:patch("coinCap", config.coinCap) end)
   end
