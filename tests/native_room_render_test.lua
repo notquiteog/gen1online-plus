@@ -13,7 +13,7 @@ for _,gen in ipairs({1,2,3})do
  local art={gen3={camera={active=true}},lib={require=function(name)assert(name=='Voxel3D');return{project=function(x,y,z)projected={x,y,z};return 640,360 end,size=function()return 1280,720 end}end}}
  mod.find=function(name)if name=='BATTLE_ART_VOXEL_FORK'then return{exports=art}end end
  package.loaded['src.render.Pipelines']={level=function()return 3 end}
- local S={chat={},peers={},status='Ready'};local adapter={generation=gen,position=function()return point end}
+ local S={chat={},peers={},status=nil};local adapter={generation=gen,position=function()return point end}
  local ui=dofile('lib/crossgen/ui.lua')(mod,S,adapter)
  local function render()hooks['render.hud'](noop,{}, {width=1280,height=720,scale=4})end
  render();assert(frames==0 and depth==0,'inactive room changed native UI')

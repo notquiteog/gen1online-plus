@@ -4,6 +4,7 @@ return function(mod, loadLocal, adapter)
   local Net = require('src.link.Net')
   local SharedWorld = loadLocal('lib/crossgen/shared_world.lua')
   local S = { connected = false, peers = {}, chat = {}, channels = {} }
+  local discovery=loadLocal('lib/crossgen/discovery.lua').new(adapter.game,adapter.generation)
   local net, authority, client, provider, config, activities
   local tick, sequence = 0, 0
   local function validToken(s) return type(s)=='string' and #s>0 and #s<=128 end
@@ -73,6 +74,7 @@ return function(mod, loadLocal, adapter)
     if provider then provider.configure(config) end
   end
   function S.disconnect(reason)
+    discovery.stop();S.status=nil;S.address=nil;S.code=nil;S.sentHello=nil
     skies.clear()
     S.connected=false;S.notice=reason;S.peers={}
     activities.disconnect()
@@ -89,8 +91,26 @@ return function(mod, loadLocal, adapter)
     if not ok then S.notice=net.error;return false,net.error end
     S.status='connecting';return true
   end
-  function S.hostLan(port)return start(true,'host',port)end
-  function S.joinLan(address)return start(false,'join',address)end
+  function S.hostLan(port)
+    port=tonumber(port)or Net.defaultPort()
+    local ok,why=start(true,'host',port)
+    if ok then
+      S.status='Waiting for player';S.address=net.address
+      local found,err=discovery.host(port,(adapter.position()or{}).name)
+      if not found then S.notice=err end
+    end
+    return ok,why
+  end
+  function S.joinLan(address)
+    address=type(address)=='string'and address:match('^%s*(.-)%s*$')or''
+    local host,port=address:match('^([%w%.%-]+):(%d+)$')
+    if not host and address:match('^[%w%.%-]+$')then host=address end
+    if not host or host==''or(port and(tonumber(port)<1 or tonumber(port)>65535))then return false,'Enter host name or IP:port' end
+    return start(false,'join',address)
+  end
+  function S.scanLan()return discovery.scan()end
+  function S.stopScan()if not net then discovery.stop()end end
+  function S.localGames()return discovery.list()end
   function S.hostOnline(relay)return start(true,'hostOnline',relay or Net.defaultRelayAddress())end
   function S.joinOnline(relay,code)return start(false,'joinOnline',relay or Net.defaultRelayAddress(),code)end
   local function capabilities()
@@ -168,6 +188,7 @@ return function(mod, loadLocal, adapter)
     dt=math.max(0,math.min(.25,tonumber(dt)or 0))
     for _,msg in ipairs(S.chat)do msg.age=msg.age+dt end
     if adapter.update then adapter.update(dt)end
+    discovery.update(dt,net and S.host and not net.paired and not S.connected)
     if not net then return end
     net:update()
     S.address,S.code=net.address,net.code

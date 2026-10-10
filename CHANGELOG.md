@@ -4,6 +4,8 @@ Use each generation native fonts and frames for room, chat and optional chat-bub
 
 ## Unreleased
 
+Add one-action HOST LOCAL and an automatically scanning JOIN browser across the shared generation adapters. Keep Direct Address for LAN or port-forwarded internet hosts and preserve relay rooms. Discovery lists matching editions, expires stale entries, and hides occupied hosts without requiring companion mods. Sixteen Lua suites pass; native Yellow/LeafGreen menu captures, real local UDP discovery and ENet loopback connections checked on Gen1Recomp 0.3.52. Physical multi-computer LAN and public-internet forwarding remain unverified.
+
 Use native generation fonts and window frames for cross-generation room/chat overlays and bubbles. Fit the pause entry as ONLINE; scroll menus and wrap display text without changing chat payloads or network authority. Native menu/chat renders inspected in Yellow, Crystal, Emerald and LeafGreen; Emerald bubble inspected. Shared room activity and rendering contracts pass. Full Unicode font availability and overlapping bubbles still need broader device checks.
 
 ## 0.9.1 — 2026-10-04

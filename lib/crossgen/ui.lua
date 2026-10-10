@@ -7,11 +7,17 @@ return function(mod, session, adapter)
     local input=game() and game().input
     if input then input.state={};input.pressed={};input.pressQueue={} end
   end
-  function UI.close()UI.open=false;adapter.menuBusy=false;quietInput()end
+  function UI.close()if session.stopScan then session.stopScan()end;UI.open=false;adapter.menuBusy=false;quietInput()end
   function UI.show(mode)
-    UI.open=true;UI.mode=mode or 'menu';UI.text='';UI.selection=1;adapter.menuBusy=true;quietInput()
+    UI.open=true;UI.mode=mode or 'menu';UI.text='';UI.selection=1;UI.error=nil;adapter.menuBusy=true;quietInput()
+    if UI.mode=='join-list' and session.scanLan then local ok,why=session.scanLan();if not ok then UI.error=why end end
   end
   local function rows()
+    if UI.mode=='join-list'then
+      UI.games=session.localGames and session.localGames()or{}
+      local list={};for _,host in ipairs(UI.games)do list[#list+1]=host.name..' '..host.address end
+      list[#list+1]='DIRECT ADDRESS';list[#list+1]='REFRESH';list[#list+1]='BACK';return list
+    end
     if session.activity and session.activity.status=='incoming'then return {'ACCEPT INVITATION','DECLINE INVITATION'}end
     if session.connected then
       local list={'CHAT'};local caps=adapter.capabilities and adapter.capabilities()or{}
@@ -20,7 +26,8 @@ return function(mod, session, adapter)
       end
       list[#list+1]='DISCONNECT';list[#list+1]='CLOSE';return list
     end
-    return {'HOST ONLINE ROOM','JOIN ONLINE ROOM','HOST LAN','JOIN LAN','CLOSE'}
+    if session.status then return {'DISCONNECT','CLOSE'}end
+    return {'HOST LOCAL','JOIN','HOST ONLINE ROOM','JOIN ONLINE ROOM','CLOSE'}
   end
   local function submit()
     local ok,why
@@ -31,7 +38,14 @@ return function(mod, session, adapter)
     if ok then UI.close()else UI.error=why end
   end
   local function choose()
-    local row=rows()[UI.selection]
+    local list=rows();UI.selection=math.min(UI.selection,#list);local row=list[UI.selection]
+    if UI.mode=='join-list'then
+      local host=UI.games[UI.selection]
+      if host then local ok,why=session.joinLan(host.address);if ok then UI.close()else UI.error=why end
+      elseif row=='DIRECT ADDRESS'then UI.show('join-lan')
+      elseif row=='REFRESH'then UI.show('join-list')else UI.show()end
+      return
+    end
     UI.error=nil
     if row=='ACCEPT INVITATION'then UI.close();session.respond(true)
     elseif row=='DECLINE INVITATION'then UI.close();session.respond(false)
@@ -40,14 +54,14 @@ return function(mod, session, adapter)
       if not ok then UI.show();UI.error=why end
     elseif row=='HOST ONLINE ROOM'then local ok,why=session.hostOnline();if not ok then UI.error=why end
     elseif row=='JOIN ONLINE ROOM'then UI.show('join-online')
-    elseif row=='HOST LAN'then local ok,why=session.hostLan();if not ok then UI.error=why end
-    elseif row=='JOIN LAN'then UI.show('join-lan')
+    elseif row=='HOST LOCAL'then local ok,why=session.hostLan();if not ok then UI.error=why end
+    elseif row=='JOIN'then UI.show('join-list')
     elseif row=='CHAT'then UI.show('chat')
     elseif row=='DISCONNECT'then session.disconnect();UI.close()
     else UI.close()end
   end
   function UI.textinput(text)
-    if not UI.open or UI.mode=='menu' or type(text)~='string'then return false end
+    if not UI.open or (UI.mode=='menu'or UI.mode=='join-list') or type(text)~='string'then return false end
     local clean=text:gsub('[%z\1-\31\127]','')
     local limit=UI.mode=='chat' and 240 or 128
     if #UI.text+#clean<=limit then UI.text=UI.text..clean end
@@ -77,8 +91,8 @@ return function(mod, session, adapter)
       if key=='f9'and session.connected then UI.show('chat');return end
       if UI.open then
         if key=='escape'then UI.close()
-        elseif key=='return' or key=='kpenter'then if UI.mode=='menu'then choose()else submit()end
-        elseif UI.mode=='menu'then
+        elseif key=='return' or key=='kpenter'then if UI.mode=='menu'or UI.mode=='join-list'then choose()else submit()end
+        elseif UI.mode=='menu'or UI.mode=='join-list'then
           if key=='up'then UI.selection=(UI.selection-2)%#rows()+1
           elseif key=='down'then UI.selection=UI.selection%#rows()+1 end
         elseif key=='backspace'then UI.text=UI.text:gsub('[%z\1-\127\194-\244][\128-\191]*$','')end
@@ -168,9 +182,9 @@ return function(mod, session, adapter)
       end
       if UI.open then
         plate(8,8,width-16,height-16)
-        text(UI.mode=='menu'and'MULTIPLAYER'or UI.mode=='chat'and'CHAT'or UI.mode=='join-online'and'ROOM CODE'or'HOST ADDRESS',16,16,width-32)
-        if UI.mode=='menu'then
-          local list=rows();local count=math.max(1,math.floor((height-76)/pitch))
+        text(UI.mode=='menu'and'MULTIPLAYER'or UI.mode=='join-list'and'LOCAL GAMES'or UI.mode=='chat'and'CHAT'or UI.mode=='join-online'and'ROOM CODE'or'HOST ADDRESS',16,16,width-32)
+        if UI.mode=='menu'or UI.mode=='join-list'then
+          local list=rows();UI.selection=math.min(UI.selection,#list);local count=math.max(1,math.floor((height-76)/pitch))
           local first=math.max(1,UI.selection-count+1)
           for i=first,math.min(#list,first+count-1)do
             local y=34+(i-first)*pitch
@@ -180,7 +194,7 @@ return function(mod, session, adapter)
             local label=({['HOST ONLINE ROOM']='HOST ONLINE',['JOIN ONLINE ROOM']='JOIN ONLINE',['ACCEPT INVITATION']='ACCEPT',['DECLINE INVITATION']='DECLINE'})[list[i]]or list[i]
             block(label,26,y,width-42,1)
           end
-          block(session.code and('Room: '..session.code)or session.address and('Address: '..session.address)or session.status or'F8/F9: chat',16,height-40,width-32,1)
+          block(UI.mode=='join-list'and(#UI.games==0 and'Scanning local network...'or'Select a host')or session.code and('Room: '..session.code)or session.address and('Address: '..session.address)or session.status or'F8/F9: chat',16,height-40,width-32,1)
         else block(UI.text..'-',16,38,width-32,math.max(1,math.floor((height-82)/pitch)),true)end
         block(UI.error or session.notice or'ENTER OK  ESC X',16,height-24,width-32,1)
       else

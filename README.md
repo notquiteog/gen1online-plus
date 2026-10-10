@@ -1,3 +1,9 @@
+## Local and direct internet games
+
+Open **ONLINE** from the pause menu. The host selects **HOST LOCAL**; the other player selects **JOIN** and chooses the automatically discovered trainer. Both players must use the same game edition and compatible mod versions. Full rooms disappear from discovery; entries expire when their host stops responding.
+
+For a port-forwarded internet game, the host also selects **HOST LOCAL**, then forwards **UDP 7777** to the host computer (or the configured game port). The guest chooses **JOIN → DIRECT ADDRESS** and enters the host’s public IP or hostname, optionally followed by `:port`. Discovery uses UDP 7776 on the local network; do not forward that discovery port. Local firewall rules and router client isolation may prevent discovery; Direct Address also accepts a local IP. Existing online relay-room options remain available.
+
 ## 0.9.0 — 2026-10-04
 
 Corrects the battle setup mode encoding for the 0.3.51 wire schema. Two Emerald clients reached native single/double command phases and trade party selection, then restored HP/PP on disconnect; full battle outcomes and trade completion were not tested.
