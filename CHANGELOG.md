@@ -1,3 +1,7 @@
+## 0.10.1 — 2026-10-11
+
+Publish optional native Gen3 ride poses to other players while preserving standalone online behavior. Existing LAN discovery, direct connection, trading and battle integrations retained.
+
 ## Unreleased
 
 Gen3 peers now publish optional ground/Surf/flight mode and species metadata from Dramatic Ride, matching the GB network pose contract. Native composite mount graphics remain unchanged; Online still works without Ride or with older providers. Optional-provider regression covers missing provider, missing API, invalid species, mount modes and dismount cleanup. Real paired FireRed, LeafGreen, Ruby, Sapphire and Emerald Surf hop/shore return and remote pose cleanup pass independently on engine0.3.73; all seven mods load, unrelated ground/sky contact encounters are disabled for this fixture.
