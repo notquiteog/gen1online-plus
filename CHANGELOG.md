@@ -1,3 +1,7 @@
+## Unreleased
+
+Gen3 peers now publish optional ground/Surf/flight mode and species metadata from Dramatic Ride, matching the GB network pose contract. Native composite mount graphics remain unchanged; Online still works without Ride or with older providers. Optional-provider regression covers missing provider, missing API, invalid species, mount modes and dismount cleanup. Real paired FireRed, LeafGreen, Ruby, Sapphire and Emerald Surf hop/shore return and remote pose cleanup pass independently on engine0.3.73; all seven mods load, unrelated ground/sky contact encounters are disabled for this fixture.
+
 ## 0.9.2 — 2026-10-05
 
 Use each generation native fonts and frames for room, chat and optional chat-bubble overlays; preserve chat payloads and native menu selection. Cross-generation rendering and room UI tests pass; Yellow/Crystal/Emerald/LeafGreen room and chat captures inspected. GB in-world bubbles and exhaustive network edge cases remain unverified.

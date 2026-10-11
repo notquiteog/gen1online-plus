@@ -17,8 +17,17 @@ return function(mod)
     if not g or g.phase~='field' or not Map.current then return end
     local session=g.session or {}
     local ride=mod.find and mod.find("DRAMATIC_SKY_RIDE");local rx=ride and ride.exports
+    local mounted
+    if rx and type(rx.gen3Pose)=='function' then
+      local pose=rx.gen3Pose()
+      if pose and pose.mounted then
+        local species=require('src.core.game3.pokemon').keyName(pose.species)
+        if species then mounted={mode=pose.mode,species=species,height=pose.height,
+          showRider=pose.showRider,mountScale=pose.scale} end
+      end
+    end
     local worldBusy=adapter.menuBusy or Compat.worldBusy()
-    return {map=Map.current,x=Player.cellX,y=Player.cellY,px=Player.px,py=Player.py,
+    return {ride=mounted,map=Map.current,x=Player.cellX,y=Player.cellY,px=Player.px,py=Player.py,
       facing=Player.facing,moving=Player.moving,skyBusy=worldBusy==true,busy=worldBusy or (rx and rx.isFlying and rx.isFlying()),
       graphics=Sprites.playerGraphicsId(g),height=math.max(0,-(Player.spriteYOffset or 0)),name=session.playerName or session.name or 'TRAINER'}
   end
