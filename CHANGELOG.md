@@ -1,3 +1,7 @@
+## 0.11.0 — 2026-10-13
+
+Host/Join controller menus, LAN discovery, saved servers, local/public host addresses, roster and kicking. Adds a headless dedicated server with VPS/systemd instructions and 128-player capacity; batches position traffic and keeps Wilds optional. Protocol 2: all room participants must update together. Verified 336 localhost ENet checks including 128 simultaneous clients, native-font menu checks, actual dedicated-server discovery/shutdown and public-IP lookup. Four native Crystal clients completed a double battle and stayed connected. Native Yellow/Gen3 completion and WAN/128-rendered-client performance remain unverified. See server/README.md for dedicated hosting.
+
 ## 0.10.1 — 2026-10-11
 
 Publish optional native Gen3 ride poses to other players while preserving standalone online behavior. Existing LAN discovery, direct connection, trading and battle integrations retained.
