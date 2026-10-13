@@ -9,10 +9,12 @@ function M.new(game,generation,socket)
  local function open(host)
   close()
   if not socket or not socket.udp then return nil,'LAN discovery unavailable; use DIRECT ADDRESS' end
-  local s,err=socket.udp();if not s then return nil,err end
-  s:settimeout(0);pcall(s.setoption,s,'reuseaddr',true);pcall(s.setoption,s,'broadcast',true)
+  local s,err=(socket.udp4 or socket.udp)();if not s then return nil,err end
+  s:settimeout(0);pcall(s.setoption,s,'reuseaddr',true);-- Broadcast is enabled after bind creates the OS socket.
   local ok,why=s:setsockname('*',host and M.PORT or 0)
   if not ok then s:close();return nil,'LAN scan unavailable; use DIRECT ADDRESS ('..tostring(why)..')' end
+  local enabled,why=s:setoption('broadcast',true)
+  if not enabled then s:close();return nil,'LAN broadcast unavailable: '..tostring(why) end
   udp=s;return true
  end
  local prefix='G1ONLINE_LAN_1\t'..tostring(generation)..'\t'..tostring(game)..'\t'

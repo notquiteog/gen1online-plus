@@ -2,12 +2,27 @@
 -- remain generation-native. It only consumes controls while explicitly open.
 return function(mod, session, adapter)
   local UI={open=false,selection=1,text='',mode='menu'}
+  local saved={}
+  if mod.storage and mod.storage.read then
+    local ok,value=pcall(mod.storage.read,mod.storage,'saved_servers')
+    if ok and type(value)=='table' then
+      for _,address in ipairs(value)do if type(address)=='string' and #address<=128 and #saved<32 then saved[#saved+1]=address end end
+    end
+  end
+  local function saveServers()
+    if not(mod.storage and mod.storage.write)then return false,'Server storage unavailable' end
+    local ok,why=pcall(mod.storage.write,mod.storage,'saved_servers',saved)
+    return ok,why
+  end
+  local function menuMode()return UI.mode=='menu'or UI.mode=='join-list'or UI.mode=='server'or UI.mode=='players'or UI.mode=='peer' end
+  local keys='1234567890abcdefghijklmnopqrstuvwxyz.-: <'
+  UI.key=1
   local function game()return mod.world.game end
   local function quietInput()
     local input=game() and game().input
-    if input then input.state={};input.pressed={};input.pressQueue={} end
+    if input then input.state={};input.pressed={};input.pressQueue={};input.aliasHeld=nil end
   end
-  function UI.close()if session.stopScan then session.stopScan()end;UI.open=false;adapter.menuBusy=false;quietInput()end
+  function UI.close()if session.stopScan then session.stopScan()end;UI.open=false;UI.blockFrame=true;adapter.menuBusy=false;quietInput()end
   function UI.show(mode)
     UI.open=true;UI.mode=mode or 'menu';UI.text='';UI.selection=1;UI.error=nil;adapter.menuBusy=true;quietInput()
     if UI.mode=='join-list' and session.scanLan then local ok,why=session.scanLan();if not ok then UI.error=why end end
@@ -16,18 +31,30 @@ return function(mod, session, adapter)
     if UI.mode=='join-list'then
       UI.games=session.localGames and session.localGames()or{}
       local list={};for _,host in ipairs(UI.games)do list[#list+1]=host.name..' '..host.address end
+      UI.lanCount=#list
+      for _,address in ipairs(saved)do list[#list+1]='SAVED '..address end
       list[#list+1]='DIRECT ADDRESS';list[#list+1]='REFRESH';list[#list+1]='BACK';return list
     end
+    if UI.mode=='players'then
+      UI.players=session.roster and session.roster()or{}
+      local list={};for _,p in ipairs(UI.players)do list[#list+1]=p.name or'TRAINER'end
+      list[#list+1]='BACK';return list
+    end
+    if UI.mode=='peer'then
+      local list={};local caps=adapter.capabilities and adapter.capabilities()or{}
+      for _,c in ipairs({{'single','SINGLE BATTLE'},{'double','DOUBLE BATTLE'},{'trade','TRADE'}})do
+        if caps[c[1]]and(session.peerCapabilities or{})[c[1]]then list[#list+1]=c[2]end
+      end
+      if session.host then list[#list+1]='KICK PLAYER'end
+      list[#list+1]='BACK';return list
+    end
+    if UI.mode=='server'then return {'CONNECT','REMOVE SAVED','BACK'}end
     if session.activity and session.activity.status=='incoming'then return {'ACCEPT INVITATION','DECLINE INVITATION'}end
     if session.connected then
-      local list={'CHAT'};local caps=adapter.capabilities and adapter.capabilities()or{}
-      for _,choice in ipairs({{'single','SINGLE BATTLE'},{'double','DOUBLE BATTLE'},{'trade','TRADE'}})do
-        if caps[choice[1]]and(session.peerCapabilities or{})[choice[1]]then list[#list+1]=choice[2]end
-      end
-      list[#list+1]='DISCONNECT';list[#list+1]='CLOSE';return list
+      return {'PLAYERS ('..#(session.roster and session.roster()or{})..')','CHAT','DISCONNECT','CLOSE'}
     end
     if session.status then return {'DISCONNECT','CLOSE'}end
-    return {'HOST LOCAL','JOIN','HOST ONLINE ROOM','JOIN ONLINE ROOM','CLOSE'}
+    return {'HOST','JOIN'}
   end
   local function submit()
     local ok,why
@@ -39,9 +66,22 @@ return function(mod, session, adapter)
   end
   local function choose()
     local list=rows();UI.selection=math.min(UI.selection,#list);local row=list[UI.selection]
+    if UI.mode=='players'then
+      local peer=UI.players[UI.selection]
+      if peer then local ok,why=session.selectPeer(peer.id);if ok then UI.show('peer')else UI.error=why end
+      else UI.show()end;return
+    end
+    if UI.mode=='peer'and row=='BACK'then UI.show('players');return end
+    if UI.mode=='server'then
+      if row=='CONNECT'then local ok,why=session.joinLan(UI.server);if ok then UI.close()else UI.error=why end
+      elseif row=='REMOVE SAVED'then table.remove(saved,UI.serverIndex);local ok,why=saveServers();UI.show('join-list');if not ok then UI.error=why end
+      else UI.show('join-list')end
+      return
+    end
     if UI.mode=='join-list'then
       local host=UI.games[UI.selection]
       if host then local ok,why=session.joinLan(host.address);if ok then UI.close()else UI.error=why end
+      elseif saved[UI.selection-UI.lanCount]then UI.serverIndex=UI.selection-UI.lanCount;UI.server=saved[UI.serverIndex];UI.show('server')
       elseif row=='DIRECT ADDRESS'then UI.show('join-lan')
       elseif row=='REFRESH'then UI.show('join-list')else UI.show()end
       return
@@ -54,23 +94,57 @@ return function(mod, session, adapter)
       if not ok then UI.show();UI.error=why end
     elseif row=='HOST ONLINE ROOM'then local ok,why=session.hostOnline();if not ok then UI.error=why end
     elseif row=='JOIN ONLINE ROOM'then UI.show('join-online')
-    elseif row=='HOST LOCAL'then local ok,why=session.hostLan();if not ok then UI.error=why end
+    elseif row=='HOST'then local ok,why=session.hostLan();if not ok then UI.error=why end
     elseif row=='JOIN'then UI.show('join-list')
+    elseif row and row:sub(1,8)=='PLAYERS 'then UI.show('players')
     elseif row=='CHAT'then UI.show('chat')
+    elseif row and row:sub(1,5)=='KICK 'then local ok,why=session.kick(session.selectedPeer);if ok then UI.show('players')else UI.error=why end
     elseif row=='DISCONNECT'then session.disconnect();UI.close()
     else UI.close()end
   end
   function UI.textinput(text)
-    if not UI.open or (UI.mode=='menu'or UI.mode=='join-list') or type(text)~='string'then return false end
+    if not UI.open or menuMode() or type(text)~='string'then return false end
     local clean=text:gsub('[%z\1-\31\127]','')
     local limit=UI.mode=='chat' and 240 or 128
     if #UI.text+#clean<=limit then UI.text=UI.text..clean end
     return true
   end
+  local function action(button)
+    if button=='b'then if UI.mode=='menu'then UI.close()else UI.show(UI.mode=='server'and'join-list'or UI.mode=='peer'and'players'or'menu')end
+    elseif menuMode()then
+      if button=='a'or button=='start'then choose()
+      elseif button=='up'then UI.selection=(UI.selection-2)%#rows()+1
+      elseif button=='down'then UI.selection=UI.selection%#rows()+1 end
+    elseif button=='start'then submit()
+    elseif button=='left'then UI.key=(UI.key-2)%#keys+1
+    elseif button=='right'then UI.key=UI.key%#keys+1
+    elseif button=='up'then UI.key=(UI.key-12)%#keys+1
+    elseif button=='down'then UI.key=(UI.key+10)%#keys+1
+    elseif button=='a'then if keys:sub(UI.key,UI.key)=='<'then UI.text=UI.text:gsub('[%z\1-\127\194-\244][\128-\191]*$','')else UI.textinput(keys:sub(UI.key,UI.key))end
+    elseif button=='select'and UI.mode=='join-lan'then
+      local address=UI.text:match('^%s*(.-)%s*$')
+      local host,port=address:match('^([%w%.%-]+):(%d+)$')
+      if not host and address:match('^[%w%.%-]+$')then host=address end
+      if not host or(port and(tonumber(port)<1 or tonumber(port)>65535))then UI.error='Enter host name or IP:port';return end
+      for _,v in ipairs(saved)do if v==address then UI.error='Already saved';return end end
+      if #saved>=32 then UI.error='Server list full';return end
+      saved[#saved+1]=address;local ok,why=saveServers();UI.error=ok and'Server saved'or why
+    end
+  end
   local boundGame
   local function bind(g)
     if not g or boundGame==g then return end
     boundGame=g
+    -- The engine polls controllers after input.step; clearing tables alone
+    -- cannot prevent held buttons from leaking into walking/interactions.
+    local input=g.input
+    if input then for _,name in ipairs({'isDown','wasPressed'})do
+      local original=input[name]
+      if original then input[name]=function(self,...)
+        if UI.open or UI.blockFrame then return false end
+        return original(self,...)
+      end end
+    end end
     local previous=g.textinput
     g.textinput=function(self,text,...)
       if UI.textinput(text)then return end
@@ -79,10 +153,17 @@ return function(mod, session, adapter)
   end
   mod.events:on('game.ready',function(ev)bind(ev and ev.game or game())end)
   mod.hooks:wrap('input.step',function(nextFn,g,dt)
-    bind(g)
+    bind(g);UI.blockFrame=false
     if session.activity and session.activity.status=='incoming' and not UI.open then UI.show()end
-    if UI.open then quietInput()end
-    return nextFn(g,dt)
+    local result=nextFn(g,dt)
+    if UI.open then
+      local input=g.input
+      if input and input.pollPads then input:pollPads()end
+      local button=input and input.pressQueue and input.pressQueue[1]
+      if button then action(button)end
+      quietInput()
+    end
+    return result
   end)
   mod.hooks:wrap('input.key',function(nextFn,g,ev)
     local key=ev and ev.key
@@ -91,10 +172,11 @@ return function(mod, session, adapter)
       if key=='f9'and session.connected then UI.show('chat');return end
       if UI.open then
         if key=='escape'then UI.close()
-        elseif key=='return' or key=='kpenter'then if UI.mode=='menu'or UI.mode=='join-list'then choose()else submit()end
-        elseif UI.mode=='menu'or UI.mode=='join-list'then
+        elseif key=='return' or key=='kpenter'then if menuMode()then choose()else submit()end
+        elseif menuMode()then
           if key=='up'then UI.selection=(UI.selection-2)%#rows()+1
           elseif key=='down'then UI.selection=UI.selection%#rows()+1 end
+        elseif key=='tab'then action('select')
         elseif key=='backspace'then UI.text=UI.text:gsub('[%z\1-\127\194-\244][\128-\191]*$','')end
         return
       end
@@ -182,8 +264,8 @@ return function(mod, session, adapter)
       end
       if UI.open then
         plate(8,8,width-16,height-16)
-        text(UI.mode=='menu'and'MULTIPLAYER'or UI.mode=='join-list'and'LOCAL GAMES'or UI.mode=='chat'and'CHAT'or UI.mode=='join-online'and'ROOM CODE'or'HOST ADDRESS',16,16,width-32)
-        if UI.mode=='menu'or UI.mode=='join-list'then
+        text(UI.mode=='menu'and(session.host and session.status and'HOSTING'or'MULTIPLAYER')or UI.mode=='players'and'CONNECTED PLAYERS'or UI.mode=='peer'and tostring((session.peers.remote or{}).name or'TRAINER')or UI.mode=='join-list'and'JOIN GAME'or UI.mode=='chat'and'CHAT'or UI.mode=='join-online'and'ROOM CODE'or'HOST ADDRESS',16,16,width-32)
+        if menuMode()then
           local list=rows();UI.selection=math.min(UI.selection,#list);local count=math.max(1,math.floor((height-76)/pitch))
           local first=math.max(1,UI.selection-count+1)
           for i=first,math.min(#list,first+count-1)do
@@ -194,16 +276,25 @@ return function(mod, session, adapter)
             local label=({['HOST ONLINE ROOM']='HOST ONLINE',['JOIN ONLINE ROOM']='JOIN ONLINE',['ACCEPT INVITATION']='ACCEPT',['DECLINE INVITATION']='DECLINE'})[list[i]]or list[i]
             block(label,26,y,width-42,1)
           end
-          block(UI.mode=='join-list'and(#UI.games==0 and'Scanning local network...'or'Select a host')or session.code and('Room: '..session.code)or session.address and('Address: '..session.address)or session.status or'F8/F9: chat',16,height-40,width-32,1)
-        else block(UI.text..'-',16,38,width-32,math.max(1,math.floor((height-82)/pitch)),true)end
-        block(UI.error or session.notice or'ENTER OK  ESC X',16,height-24,width-32,1)
+          block(UI.mode=='server'and UI.server or UI.mode=='join-list'and(#UI.games==0 and'Scanning LAN...'or'Select a host')or session.code and('Room: '..session.code)or session.address and('Address: '..session.address)or session.status or'F8/F9: chat',16,height-40,width-32,1)
+        else
+          block(UI.text..'-',16,34,width-32,2,true)
+          for i=1,#keys do
+            local x,y=20+((i-1)%11)*12,56+math.floor((i-1)/11)*12
+            if i==UI.key then gfx.setColor(.7,.7,.7,1);gfx.rectangle('fill',x-2,y-1,11,11);gfx.setColor(1,1,1,1)end
+            text(keys:sub(i,i)==' 'and'_'or keys:sub(i,i),x,y,12)
+          end
+          text(UI.mode=='chat'and'START SEND'or'START JOIN',16,height-40,width-32)
+          if UI.mode=='join-lan'then text('SELECT/TAB SAVE',16,height-30,width-32)end
+        end
+        block(UI.error or session.notice or'A OK  B BACK',16,height-18,width-32,1)
       else
         local shown,placed={},{}
         for i=#session.chat,1,-1 do
-          local msg=session.chat[i];local who=msg.localSender and'local'or'remote'
+          local msg=session.chat[i];local who=msg.localSender and'local'or msg.peerId or'remote'
           if msg.age<7 and not shown[who]then
             shown[who]=true
-            local p=msg.localSender and adapter.position()or session.peers.remote
+            local p=msg.localSender and adapter.position()or session.peers[msg.peerId or'remote']
             local x,y=bubblePoint(p,v)
             if x and y and x>=0 and x<=v.width and y>=0 and y<=v.height then
               x,y=(x-ox)/scale,(y-oy)/scale
@@ -226,10 +317,15 @@ return function(mod, session, adapter)
     gfx.pop();if not ok then error(err,0)end
   end)
   local function nearPeer()
-    local p,q=adapter.position(),session.peers.remote
-    if session.activity or not session.connected or not p or p.busy or not q or p.map~=q.map then return false end
+    local p=adapter.position()
+    local peers=session.roster and session.roster()or{session.peers.remote}
+    if not p then return false end
+    for _,q in ipairs(peers)do
+    if session.activity or not session.connected or p.busy then return false end
     local d=({up={0,-1},down={0,1},left={-1,0},right={1,0}})[p.facing]
-    if d and q.x==p.x+d[1]and q.y==p.y+d[2]then UI.show();return true end
+    if q and p.map==q.map and d and q.x==p.x+d[1]and q.y==p.y+d[2]then
+      if session.selectPeer then session.selectPeer(q.id)end;UI.show('peer');return true end
+    end
     return false
   end
   -- Crystal dispatches the compatibility interaction seam also used by the

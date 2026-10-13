@@ -2,7 +2,7 @@ local M=dofile('lib/crossgen/discovery.lua')
 local sockets={};local port=30000
 local socket={udp=function()
  local s={queue={},sent={}};sockets[#sockets+1]=s
- function s:settimeout()end;function s:setoption()end
+ function s:settimeout()end;function s:setoption(name)if name=='broadcast'then assert(self.port,'broadcast set before socket bind')end;return true end
  function s:setsockname(_,p)port=port+1;self.port=p==0 and port or p;return true end
  function s:sendto(data,ip,p)
   self.sent[#self.sent+1]={data,ip,p}
