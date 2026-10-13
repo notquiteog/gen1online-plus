@@ -282,7 +282,16 @@ return function(mod, session, adapter)
           for i=1,#keys do
             local x,y=20+((i-1)%11)*12,56+math.floor((i-1)/11)*12
             if i==UI.key then gfx.setColor(.7,.7,.7,1);gfx.rectangle('fill',x-2,y-1,11,11);gfx.setColor(1,1,1,1)end
-            text(keys:sub(i,i)==' 'and'_'or keys:sub(i,i),x,y,12)
+            local ch=keys:sub(i,i)
+            -- GB fonts omit ASCII backspace/underscore glyphs.
+            if ch=='<' or ch==' 'then
+              gfx.setColor(0,0,0,1)
+              gfx.rectangle('fill',x,y+5,7,1)
+              if ch=='<'then
+                gfx.rectangle('fill',x+1,y+4,1,3);gfx.rectangle('fill',x+2,y+3,1,5)
+              else gfx.rectangle('fill',x,y+3,1,2);gfx.rectangle('fill',x+6,y+3,1,2)end
+              gfx.setColor(1,1,1,1)
+            else text(ch,x,y,12)end
           end
           text(UI.mode=='chat'and'START SEND'or'START JOIN',16,height-40,width-32)
           if UI.mode=='join-lan'then text('SELECT/TAB SAVE',16,height-30,width-32)end
