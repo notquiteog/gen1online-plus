@@ -7,7 +7,7 @@ package.loaded['src.link.Json']=os.getenv('STANDALONE_JSON')=='1'and loadLocal('
 local count=0
 local function check(v,why)count=count+1;assert(v,why)end
 local sessions,ends={},{}
-local function endpoint(i,dedicated)
+local function endpoint(i,dedicated,noWilds)
  local e={position={map='town',x=i%2,y=0,px=(i%2)*16,py=0,facing='down',name='PLAYER'..i},drawn={},starts={},applied={},encounters=0}
  local rows={{id='bird',species='PIDGEY',level=5,x=1,y=0}}
  local provider={version=1,configure=function(c)e.config=c end,apply=function(map,data)e.applied[map]=data end,
@@ -19,7 +19,7 @@ local function endpoint(i,dedicated)
  canClaimSky=function()return true end,grantSharedSkyFieldContact=function()e.skyEncounters=(e.skyEncounters or 0)+1;return true end,
  denySharedSkyFieldContact=function()end,applySharedSkyFieldSnapshot=function(p)skyRows[p.map]=p.spawns;return true end,
  sharedSkyFieldSnapshot=function(map)return{map=map,spawns=skyRows[map]or{}}end}
- local a={dedicated=dedicated,generation=3,game='leafgreen',position=function()return e.position end,capabilities=function()return{single=true,double=true,trade=true}end,
+ local a={publicIP='203.0.113.10',dedicated=dedicated,generation=3,game='leafgreen',position=function()return e.position end,capabilities=function()return{single=true,double=true,trade=true}end,
  peer=function(p,id)e.drawn[id]=p end,removePeer=function(id)e.drawn[id]=nil end,clearPeers=function()e.drawn={}end,
  startActivity=function(mode,ch,host,done)e.starts[#e.starts+1]={mode=mode,ch=ch,host=host,done=done};return true end,
  abortActivity=function()e.aborted=true end}
@@ -28,7 +28,7 @@ local function endpoint(i,dedicated)
   if path=='lib/crossgen/discovery.lua'then return{new=function()return{stop=function()end,host=function()return true end,update=function()end}end}end
   return loadLocal(path)
  end
- e.S=loadLocal('lib/crossgen/session.lua')({hooks={wrap=function()end},find=function(id)if dedicated then return end;if id=='overworld_wild_spawns'then return{exports={sharedSpawns=provider}}elseif id=='wild_skies'then return{exports=sky}end end},loader,a)
+ e.S=loadLocal('lib/crossgen/session.lua')({hooks={wrap=function()end},find=function(id)if dedicated then return end;if id=='overworld_wild_spawns'and not noWilds then return{exports={sharedSpawns=provider}}elseif id=='wild_skies'then return{exports=sky}end end},loader,a)
  sessions[#sessions+1]=e.S;ends[#ends+1]=e;return e
 end
 local realtime=false
@@ -82,14 +82,20 @@ survivor.net:send{type='world_ecology',session=D.S.session,epoch=epoch,domain='w
 check(not D.S.state().authority.town.rows.forged,'expired or non-owner ecology rejected')
 check(survivor.S.say('Still connected'),'survivor chat');step();check(D.S.connected,'dedicated host survives owner departure')
 for _,s in ipairs(sessions)do s.disconnect()end
-if os.getenv('ONLINE_LOAD64')=='1'then
- realtime=true;sessions,ends={},{};local server=endpoint(0,true);check(server.S.hostLan(19779,64),'64-player dedicated bind')
- local clients={};for i=1,64 do clients[i]=endpoint(i);assert(clients[i].S.joinLan('127.0.0.1:19779'))end
+sessions,ends={},{};local vanillaHost=endpoint(1,false,true);local moddedGuest=endpoint(2)
+check(vanillaHost.S.hostLan(19780),'optional host bind');check(moddedGuest.S.joinLan('127.0.0.1:19780'),'optional guest join');step(150)
+check(moddedGuest.S.connected and not moddedGuest.config,'host without Wilds must not suppress guest standalone spawns')
+for _,s in ipairs(sessions)do s.disconnect()end
+local loadCount=tonumber(os.getenv('ONLINE_LOAD_PLAYERS'))or(os.getenv('ONLINE_LOAD64')=='1'and 64)
+if loadCount then
+ assert(loadCount>=4 and loadCount<=128)
+ realtime=true;sessions,ends={},{};local server=endpoint(0,true);check(server.S.hostLan(19779,loadCount),'load-test dedicated bind')
+ local clients={};for i=1,loadCount do clients[i]=endpoint(i);assert(clients[i].S.joinLan('127.0.0.1:19779'))end
  local start=love.timer.getTime();step(250)
- for _,e in ipairs(clients)do check(e.S.connected and #e.S.roster()==63,'64-client handshake and roster '..tostring(e.S.localId)..' '..tostring(e.S.notice)..' members='..#e.S.roster()..' host='..tostring(server.S.notice))end
- check(#server.S.roster()==64,'64-player server roster');clients[64].S.say('sixty four');step(80)
- for _,e in ipairs(clients)do check(e.S.chat[#e.S.chat].text=='sixty four','64-way chat')end
- print(string.format('64-client localhost transport load: %.2fs wall time; mock game adapters, not rendering benchmark',love.timer.getTime()-start))
+ for _,e in ipairs(clients)do check(e.S.connected and #e.S.roster()==loadCount-1,'load-test handshake and roster '..tostring(e.S.localId)..' '..tostring(e.S.notice)..' members='..#e.S.roster()..' host='..tostring(server.S.notice))end
+ check(#server.S.roster()==loadCount,'load-test server roster');clients[loadCount].S.say('large room');step(80)
+ for _,e in ipairs(clients)do check(e.S.chat[#e.S.chat].text=='large room','large room chat')end
+ print(string.format(tostring(loadCount)..'-client localhost transport load: %.2fs wall time; mock game adapters, not rendering benchmark',love.timer.getTime()-start))
  for _,s in ipairs(sessions)do s.disconnect()end
 end
 print('PASS '..count..' real ENet multi-player roster, rendering dispatch, chat, guest-to-guest doubles, concurrent trade, authenticated channels, shared encounters and rejoin checks')

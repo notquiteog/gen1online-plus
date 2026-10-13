@@ -17,7 +17,7 @@ function M.new(game,generation,socket)
   if not enabled then s:close();return nil,'LAN broadcast unavailable: '..tostring(why) end
   udp=s;return true
  end
- local prefix='G1ONLINE_LAN_1\t'..tostring(generation)..'\t'..tostring(game)..'\t'
+ local prefix='G1ONLINE_LAN_2\t'..tostring(generation)..'\t'..tostring(game)..'\t'
  function D.host(port,name)
   D.stop();local ok,err=open(true);if not ok then return nil,err end
   advertised={port=port,name=tostring(name or 'TRAINER'):gsub('[^%w _%-]',''):sub(1,20)}

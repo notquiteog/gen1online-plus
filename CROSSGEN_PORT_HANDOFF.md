@@ -1,3 +1,28 @@
+## 2026-10-13 room audit
+
+Host/Join remain the only disconnected main choices. Host now shows port,
+LAN IPv4 and asynchronous public IPv4, roster/kick, chat and disconnect; B
+closes the overlay. Public lookup failure cannot block hosting, including
+missing compute/thread permission. Manifest declares compute for threaded
+networking. Verified one real ipify lookup; no player/save data sent.
+
+Room capacity/default is128. Per-peer positions are now coalesced at10Hz in
+bounded32-row snapshots rather than forwarded individually to every peer.
+Final actual ENet suite passed336checks with128clients, including roster/chat,
+private activities and optional host-without-Wilds behavior. These are mock
+native adapters, not128rendered game instances. Prior actual four-client
+Crystal085 native doubles completed, guests returned without room loss;
+Yellow/Emerald follow-up QA remains owned by the multiplayer worker.
+
+Native-font menu render fixtures pass all3generations, as do controller,
+saved-server, LAN-discovery, address validation/failure/timeout suites.
+Standalone process actually answered LAN discovery onlocalhost, displayed a
+fixed public-IP override, accepted list/stop and exited cleanly. Service unit
+syntax verified using local executable path; deployment under systemd/VPS is
+not verified. Server docs cover128capacity, firewall/UDP ports, public override
+and systemd setup. Legacy GTS networking remains opt-in; no automatic legacy
+connection was found in the startup/update audit. No release/push this batch.
+
 ## 0.8.1 — 2026-09-26
 
 Optional legacy follower-asset status now goes to the diagnostic log rather than opening a blocking dialogue during play. This removes the startup overlay seen over Crystal interiors; asset fallback behavior is unchanged.

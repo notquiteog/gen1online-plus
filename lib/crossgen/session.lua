@@ -4,12 +4,13 @@ return function(mod, loadLocal, adapter)
   local Native = require('src.link.Net')
   local Net = loadLocal('lib/crossgen/room_transport.lua')
   local SharedWorld = loadLocal('lib/crossgen/shared_world.lua')
+  local hostAddress=loadLocal('lib/crossgen/host_address.lua').new()
   local S = { connected = false, peers = {}, chat = {}, channels = {} }
   local discovery=loadLocal('lib/crossgen/discovery.lua').new(adapter.game,adapter.generation)
   local net, authority, client, provider, config, activities, lanPort
   local tick, sequence = 0, 0
   local members, sequences = {}, {}
-  local waitingHello={};local helloBudget=0
+  local waitingHello={};local helloBudget=0;local pendingPositions={}
   local delegation
   local function resetPeers()
     S.peers=setmetatable({}, {__index=function(t,k)if k=='remote'then return rawget(t,S.selectedPeer or '') or select(2,next(t))end end})
@@ -43,6 +44,7 @@ return function(mod, loadLocal, adapter)
   local function delegated()return S.ecologyOwners and S.ecologyOwners.wilds==S.localId end
   local function configureProvider()
     local p=findProvider()
+    if not S.host and not(S.hostCapabilities or{}).sharedWilds then p=nil end
     local role=(S.host or delegated())and 'host'or 'guest'
     if provider~=p or (config and config.role~=role)then
       if provider then provider.configure(nil) end
@@ -89,11 +91,11 @@ return function(mod, loadLocal, adapter)
     if provider then provider.configure(config) end
   end
   function S.disconnect(reason)
-    lanPort=nil
+    lanPort=nil;hostAddress.clear();S.publicIP=nil;S.publicIPStatus=nil
     discovery.stop();S.status=nil;S.address=nil;S.code=nil;S.sentHello=nil
     skies.clear()
     if delegation then delegation.clear();delegation=nil end;S.ecologyOwners=nil;S.ecologyEpoch=nil;S.dedicated=nil
-    S.connected=false;S.notice=reason;members={};sequences={};waitingHello={};S.selectedPeer=nil;S.localId=nil;S.hostCapabilities={};S.peerCapabilities={};resetPeers()
+    S.connected=false;S.notice=reason;members={};sequences={};waitingHello={};pendingPositions={};S.selectedPeer=nil;S.localId=nil;S.hostCapabilities={};S.peerCapabilities={};resetPeers()
     activities.disconnect()
     if net then net:close();net=nil end
     if provider then provider.configure(nil);provider=nil end
@@ -109,10 +111,10 @@ return function(mod, loadLocal, adapter)
     S.status='connecting';return true
   end
   local capabilities,ready
-  function S.hostLan(port,capacity)
+  function S.hostLan(port,capacity,publicIP)
     port=tonumber(port)or Native.defaultPort()
     if port%1~=0 or port<1 or port>65535 then return false,'Invalid port'end
-    capacity=math.max(4,math.min(64,math.floor(tonumber(capacity)or 64)))
+    capacity=math.max(4,math.min(128,math.floor(tonumber(capacity)or 128)))
     local ok,why=start(true,'host',port,capacity+(adapter.dedicated and 1 or 0))
     if ok then
       lanPort=port
@@ -120,6 +122,7 @@ return function(mod, loadLocal, adapter)
       ready(tostring(os.time())..'-'..tostring(love.math.random(1,2147483646)))
       if S.dedicated then delegation=loadLocal('lib/crossgen/delegation.lua')(S,send,authority,loadLocal('lib/crossgen/sky_world.lua'),function()return members end)end
       S.status='Hosting room';S.address=net.address
+      hostAddress.start(publicIP or adapter.publicIP);S.publicIP=hostAddress.ip;S.publicIPStatus=hostAddress.status
       local found,err=discovery.host(port,adapter.serverName or(adapter.position()or{}).name)
       if not found then S.notice=err end
     end
@@ -189,7 +192,7 @@ return function(mod, loadLocal, adapter)
     if id~=S.localId and not members[id].server and not S.selectedPeer then S.selectPeer(id)end
   end
   local function departed(id)
-    members[id]=nil;waitingHello[id]=nil;S.peers[id]=nil;sequences[id]=nil
+    members[id]=nil;waitingHello[id]=nil;pendingPositions[id]=nil;S.peers[id]=nil;sequences[id]=nil
     if authority then authority:disconnect(id)end
     if skies.peerDisconnected then skies.peerDisconnected(id)end
     activities.peerDisconnected(id)
@@ -212,10 +215,19 @@ return function(mod, loadLocal, adapter)
     if msg.type=='world_welcome'and not S.host and not S.connected then
       if origin~='host'or msg.protocol~=2 or not validToken(msg.session)or msg.generation~=adapter.generation or msg.game~=adapter.game or type(msg.members)~='table'then return end
       if type(msg.id)~='string'or not msg.id:match('^p%d+$')then return end
-      S.localId=msg.id;S.dedicated=msg.dedicated==true;local n=0;for id,m in pairs(msg.members)do n=n+1;if n<=65 then member(id,m)end end
+      S.localId=msg.id;S.dedicated=msg.dedicated==true;local n=0;for id,m in pairs(msg.members)do n=n+1;if n<=129 then member(id,m)end end
       S.hostCapabilities=(members.host or{}).capabilities or{};ready(msg.session);return
     end
     if not S.connected or msg.session~=S.session then return end
+    -- Only the authenticated host may batch positions. Bound traversal and
+    -- pass each row through the same member/sequence/position validation.
+    if msg.type=='world_positions'then
+      if not S.host and origin=='host'and type(msg.rows)=='table'then
+        for i=1,math.min(#msg.rows,32)do local row=msg.rows[i]
+          if type(row)=='table'then handle({type='world_position',session=S.session,from=row.id,sequence=row.sequence,position=row.position},origin)end
+        end
+      end;return
+    end
     local peer=S.host and origin or msg.from
     if S.host then
       if not members[peer]then return end
@@ -224,7 +236,8 @@ return function(mod, loadLocal, adapter)
         if type(msg.to)~='string'or not members[msg.to]or msg.to==peer then return end
         if msg.to~='host'then net:send(msg,msg.to);return end
       elseif msg.type=='world_position'then
-        local p=position(msg.position);if not p or not finite(msg.sequence)then return end;msg.position=p;for id in pairs(members)do if id~='host'and id~=peer then net:send(msg,id)end end
+        local p=position(msg.position);if not p or not finite(msg.sequence)then return end;msg.position=p
+        if msg.sequence>(sequences[peer]or -1)then pendingPositions[peer]={id=peer,sequence=msg.sequence,position=p}end
       elseif msg.type=='world_chat'then
         if type(msg.text)~='string'or #msg.text>240 then return end;for id in pairs(members)do if id~='host'and id~=peer then net:send(msg,id)end end
       end
@@ -265,6 +278,7 @@ return function(mod, loadLocal, adapter)
   end
   function S.update(dt)
     dt=math.max(0,math.min(.25,tonumber(dt)or 0))
+    hostAddress.update(dt);S.publicIP=hostAddress.ip;S.publicIPStatus=hostAddress.status
     for _,msg in ipairs(S.chat)do msg.age=msg.age+dt end
     if adapter.update then adapter.update(dt)end
     discovery.update(dt,net and S.host and S.connected and #S.roster()<(net.capacity or 64)-1)
@@ -289,7 +303,20 @@ return function(mod, loadLocal, adapter)
     if tick<.1 then return end
     tick=tick%.1;sequence=sequence+1
     local p=adapter.position()
-    if p then send{type='world_position',session=S.session,sequence=sequence,position=p}end
+    if p then
+      if S.host then pendingPositions.host={id='host',sequence=sequence,position=p}
+      else send{type='world_position',session=S.session,sequence=sequence,position=p}end
+    end
+    if S.host then
+      -- Coalesce each guest's latest position into bounded room snapshots,
+      -- instead of relaying every incoming packet separately to every peer.
+      local rows={}
+      for id,row in pairs(pendingPositions)do
+        rows[#rows+1]=row;pendingPositions[id]=nil
+        if #rows==32 then send{type='world_positions',session=S.session,rows=rows};rows={}end
+      end
+      if #rows>0 then send{type='world_positions',session=S.session,rows=rows}end
+    end
     if (authority or delegated())and provider then
       local map,rows=provider.snapshot()
       if map then if authority then authority:publish(map,rows)else send{type='world_ecology',session=S.session,epoch=S.ecologyEpoch,domain='wilds',map=map,rows=rows}end end

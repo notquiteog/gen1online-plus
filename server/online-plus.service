@@ -1,0 +1,29 @@
+# Copy the repository/release to /opt/online-plus, install LÖVE with ENet and
+# LuaSocket, then copy this unit into /etc/systemd/system/ and edit game/port.
+[Unit]
+Description=Online+ dedicated Pokemon room
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=online-plus
+Environment=XDG_DATA_HOME=/var/lib/online-plus
+Environment=ONLINE_SERVER_NAME=Friends-Room
+# Optional public IPv4 override, useful behind NAT or without IP lookup:
+# Environment=ONLINE_PUBLIC_IP=203.0.113.10
+WorkingDirectory=/opt/online-plus
+ExecStart=/opt/online-plus/server/run.sh crystal 7777 128
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

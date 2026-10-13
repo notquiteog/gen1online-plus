@@ -1,7 +1,7 @@
 for _,gen in ipairs({1,2,3})do
  local hooks,drawn,frames={},{},0;local depth=0;local scales={}
  local function noop()end
- local gfx={push=function()depth=depth+1 end,pop=function()depth=depth-1 end,origin=noop,setShader=noop,translate=noop,scale=function(s)scales[#scales+1]=s end,setColor=noop}
+ local gfx={push=function()depth=depth+1 end,pop=function()depth=depth-1 end,rectangle=noop,origin=noop,setShader=noop,translate=noop,scale=function(s)scales[#scales+1]=s end,setColor=noop}
  love={graphics=gfx}
  local F={COLOR={NORMAL={}},width=function(s)return #s*8 end,measure=function(s)return #s*6 end,
  draw=function(s,x,y)drawn[#drawn+1]={s=s,x=x,y=y}end,drawCode=noop,drawBox=function()frames=frames+1 end}
@@ -18,9 +18,13 @@ for _,gen in ipairs({1,2,3})do
  local function render()hooks['render.hud'](noop,{}, {width=1280,height=720,scale=4})end
  render();assert(frames==0 and depth==0,'inactive room changed native UI')
  ui.show();render();assert(frames==1 and depth==0);local menuScale=scales[#scales]
- local found=false;for _,d in ipairs(drawn)do found=found or d.s=='HOST ONLINE';assert(d.y>=0 and d.y<160)end;assert(found)
+ local found=false;for _,d in ipairs(drawn)do found=found or d.s=='HOST';assert(d.y>=0 and d.y<160)end;assert(found)
+ S.host=true;S.connected=true;S.status='Hosting room';S.address='192.168.1.100:7777';S.publicIP='203.0.113.100';ui.show();drawn={};render()
+ local labels={};for _,d in ipairs(drawn)do labels[d.s]=true;assert(d.y>=0 and d.y<144)end
+ assert(labels['HOST :7777']and labels['LAN IP']and labels['PUBLIC IP']and labels[S.publicIP]and labels['192.168.1.100'])
+ S.host=false;S.connected=false
  ui.show('chat');ui.text=string.rep('hello ',40);local original=ui.text;render();assert(ui.text==original,'render mutated outgoing chat')
- ui.close();S.chat={{text='Hello!',age=0,localSender=true}};render();assert(frames==3 and depth==0);assert(scales[#scales]==math.max(1,math.floor(menuScale/2)),'bubble reused full screen menu scale');assert(projected and projected[2]==78,'bubble ignored mount altitude')
+ ui.close();S.chat={{text='Hello!',age=0,localSender=true}};render();assert(frames==4 and depth==0);assert(scales[#scales]==math.max(1,math.floor(menuScale/2)),'bubble reused full screen menu scale');assert(projected and projected[2]==78,'bubble ignored mount altitude')
  F.draw=function()error('draw failed')end;ui.show();assert(not pcall(render)and depth==0,'draw failure leaked graphics state')
 end
 print('PASS native room frames/fonts, menu fitting, untouched chat payload and graphics cleanup across 3 generations')

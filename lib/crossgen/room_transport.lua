@@ -1,7 +1,7 @@
 -- ENet star transport: the host is the only relay and assigns connection IDs.
 local Json=require('src.link.Json')
 local Native=require('src.link.Net')
-local T={MAX_PLAYERS=65,MAX_PACKET=262144,MAX_EVENTS=512}
+local T={MAX_PLAYERS=129,MAX_PACKET=262144,MAX_EVENTS=512}
 function T.new()
  local self={closed=false,paired=false,peers={},inbox={},serial=0}
  local h,server,hosting;local byPeer={};local budgets={};local clock=0

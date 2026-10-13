@@ -11,8 +11,9 @@ return function(mod, session, adapter)
   end
   local function saveServers()
     if not(mod.storage and mod.storage.write)then return false,'Server storage unavailable' end
-    local ok,why=pcall(mod.storage.write,mod.storage,'saved_servers',saved)
-    return ok,why
+    local ok,result,why=pcall(mod.storage.write,mod.storage,'saved_servers',saved)
+    if not ok or result==false or(result==nil and why~=nil)then return false,why or result end
+    return true
   end
   local function menuMode()return UI.mode=='menu'or UI.mode=='join-list'or UI.mode=='server'or UI.mode=='players'or UI.mode=='peer' end
   local keys='1234567890abcdefghijklmnopqrstuvwxyz.-: <'
@@ -51,7 +52,8 @@ return function(mod, session, adapter)
     if UI.mode=='server'then return {'CONNECT','REMOVE SAVED','BACK'}end
     if session.activity and session.activity.status=='incoming'then return {'ACCEPT INVITATION','DECLINE INVITATION'}end
     if session.connected then
-      return {'PLAYERS ('..#(session.roster and session.roster()or{})..')','CHAT','DISCONNECT','CLOSE'}
+      local list={'PLAYERS ('..#(session.roster and session.roster()or{})..')','CHAT','DISCONNECT'}
+      if not session.host then list[#list+1]='CLOSE'end;return list
     end
     if session.status then return {'DISCONNECT','CLOSE'}end
     return {'HOST','JOIN'}
@@ -264,7 +266,7 @@ return function(mod, session, adapter)
       end
       if UI.open then
         plate(8,8,width-16,height-16)
-        text(UI.mode=='menu'and(session.host and session.status and'HOSTING'or'MULTIPLAYER')or UI.mode=='players'and'CONNECTED PLAYERS'or UI.mode=='peer'and tostring((session.peers.remote or{}).name or'TRAINER')or UI.mode=='join-list'and'JOIN GAME'or UI.mode=='chat'and'CHAT'or UI.mode=='join-online'and'ROOM CODE'or'HOST ADDRESS',16,16,width-32)
+        text(UI.mode=='menu'and(session.host and session.status and('HOST :'..tostring((session.address or''):match(':(%d+)$')or''))or'MULTIPLAYER')or UI.mode=='players'and'CONNECTED PLAYERS'or UI.mode=='peer'and tostring((session.peers.remote or{}).name or'TRAINER')or UI.mode=='join-list'and'JOIN GAME'or UI.mode=='chat'and'CHAT'or UI.mode=='join-online'and'ROOM CODE'or'HOST ADDRESS',16,16,width-32)
         if menuMode()then
           local list=rows();UI.selection=math.min(UI.selection,#list);local count=math.max(1,math.floor((height-76)/pitch))
           local first=math.max(1,UI.selection-count+1)
@@ -276,7 +278,12 @@ return function(mod, session, adapter)
             local label=({['HOST ONLINE ROOM']='HOST ONLINE',['JOIN ONLINE ROOM']='JOIN ONLINE',['ACCEPT INVITATION']='ACCEPT',['DECLINE INVITATION']='DECLINE'})[list[i]]or list[i]
             block(label,26,y,width-42,1)
           end
+          if UI.mode=='menu'and session.host and session.connected then
+            text('LAN IP',16,72,width-32);text((session.address or''):match('^(.*):%d+$')or'Unavailable',16,84,width-32)
+            text('PUBLIC IP',16,96,width-32);text(session.publicIP or session.publicIPStatus or'Unavailable',16,108,width-32)
+          else
           block(UI.mode=='server'and UI.server or UI.mode=='join-list'and(#UI.games==0 and'Scanning LAN...'or'Select a host')or session.code and('Room: '..session.code)or session.address and('Address: '..session.address)or session.status or'F8/F9: chat',16,height-40,width-32,1)
+          end
         else
           block(UI.text..'-',16,34,width-32,2,true)
           for i=1,#keys do
