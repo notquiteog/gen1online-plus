@@ -90,7 +90,7 @@ return function(S,adapter,send)
   end
   function A.disconnect()
     if adapter.abortActivity then adapter.abortActivity()end
-    S.activity=nil;S.peerCapabilities={}
+    S.activity=nil
   end
   return A
 end

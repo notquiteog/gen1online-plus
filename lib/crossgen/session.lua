@@ -93,7 +93,7 @@ return function(mod, loadLocal, adapter)
     discovery.stop();S.status=nil;S.address=nil;S.code=nil;S.sentHello=nil
     skies.clear()
     if delegation then delegation.clear();delegation=nil end;S.ecologyOwners=nil;S.ecologyEpoch=nil;S.dedicated=nil
-    S.connected=false;S.notice=reason;members={};sequences={};waitingHello={};S.selectedPeer=nil;S.localId=nil;S.hostCapabilities={};resetPeers()
+    S.connected=false;S.notice=reason;members={};sequences={};waitingHello={};S.selectedPeer=nil;S.localId=nil;S.hostCapabilities={};S.peerCapabilities={};resetPeers()
     activities.disconnect()
     if net then net:close();net=nil end
     if provider then provider.configure(nil);provider=nil end
