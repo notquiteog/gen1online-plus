@@ -21,9 +21,12 @@ Verified with official Gen1Recomp 0.3.85 on 2026-10-13:
   target selection, native return and both room observers retained. Yellow
   profile used Online, Double Battles and Modern UI; no scenery mod.
 - Crystal: same completed flow with the seven companion mods loaded.
-- Emerald: four native processes reached commands, target selection and damage;
-  completion remains under verification. Do not treat transport mocks as native
-  Emerald battle completion evidence.
+- Emerald: all four native processes completed a guest-to-guest native double
+  battle (Explosion produced a draw), returned to the overworld, retained all
+  peers and delivered both DONE messages to both observers. Seven mods loaded.
+  A prior Tackle run also exercised target selection and damage. The returned
+  first-person camera faced close scenery in this fixture; this is not a
+  scenery/camera quality certification.
 - Yellow host menu: separate LAN/public address and port title visually checked
   with the engine pixel font at 640x480.
 
