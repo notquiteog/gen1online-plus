@@ -6,8 +6,8 @@ return function(S,adapter,send)
   local function packet(kind,p)
     p=p or {};p.type='world_activity';p.kind=kind;p.session=S.session;return p
   end
-  local function near()
-    local p=adapter.position();local q=S.peers.remote
+  local function near(id)
+    local p=adapter.position();local q=S.peers[id]
     return p and q and p.map==q.map and math.abs(p.x-q.x)+math.abs(p.y-q.y)<=1,p,q
   end
   local function finishBoth()
@@ -21,49 +21,53 @@ return function(S,adapter,send)
   local function completed(result)
     local a=S.activity;if not a or a.localDone then return end
     a.localDone=true;a.result=tostring(result or 'finished')
-    send(packet('done',{id=a.id,result=a.result}));finishBoth()
+    send(packet('done',{id=a.id,result=a.result}),a.peer);finishBoth()
   end
   local function begin()
     local a=S.activity;if not a then return end
     a.status='active';A.elapsed=0
     if S.ui then S.ui.close()end
-    local ok,why=adapter.startActivity(a.mode,S.channel(a.id),S.host,function(result)
+    local ok,why=adapter.startActivity(a.mode,S.channel(a.id),a.initiator,function(result)
       -- A native trade animation may finish after its room disconnected.
       -- Its callback must never complete a new room's unrelated invitation.
       if S.activity==a then completed(result)end
     end)
     if not ok then S.notice=tostring(why);completed('error')end
   end
-  function S.invite(mode)
+  function S.invite(mode,peer)
+    peer=peer or S.selectedPeer or (S.roster()[1]or{}).id
+    local info=peer and S.peerInfo(peer)
     if not S.connected or S.activity then return false,'Already busy or disconnected' end
-    if not capabilities()[mode] or not(S.peerCapabilities or {})[mode] then return false,'Both players need support for this activity' end
-    local nearby,p,q=near()
+    if not capabilities()[mode] or not(info and info.capabilities or {})[mode] then return false,'Both players need support for this activity' end
+    local nearby,p,q=near(peer)
     if not nearby then return false,'Walk next to the other trainer' end
     if p.busy or q.busy then return false,'A trainer is busy' end
     A.serial=A.serial+1
-    local id=(S.host and 'host' or 'guest')..':'..A.serial
-    S.activity={id=id,mode=mode,status='waiting'};S.channel(id);A.elapsed=0
-    send(packet('invite',{id=id,mode=mode}));return true
+    local id=S.localId..':'..A.serial
+    S.activity={id=id,mode=mode,status='waiting',peer=peer,initiator=true};S.channel(id);A.elapsed=0
+    send(packet('invite',{id=id,mode=mode}),peer);return true
   end
   function S.respond(accept)
     local a=S.activity
     if not a or a.status~='incoming'then return false,'No invitation' end
-    local nearby,p=near()
+    local nearby,p=near(a.peer)
     if not accept or not nearby or (p and p.busy) then
-      send(packet('decline',{id=a.id}));S.channel(a.id):close();S.activity=nil;return false
+      send(packet('decline',{id=a.id}),a.peer);S.channel(a.id):close();S.activity=nil;return false
     end
-    send(packet('accept',{id=a.id}));begin();return true
+    send(packet('accept',{id=a.id}),a.peer);begin();return true
   end
-  function A.handle(msg)
+  function A.handle(msg,peer)
+    local info=peer and S.peerInfo(peer)
     if msg.type~='world_activity'then return false end
     if type(msg.id)~='string' or #msg.id>64 then return true end
     if msg.kind=='invite'then
-      local nearby,p=near()
+      if type(peer)~='string'or not msg.id:match('^'..peer..':%d+$')then return true end
+      local nearby,p=near(peer)
       if S.activity or not nearby or not p or p.busy or not capabilities()[msg.mode]
-        or not (S.peerCapabilities or {})[msg.mode]then send(packet('decline',{id=msg.id}));return true end
-      S.activity={id=msg.id,mode=msg.mode,status='incoming'};S.channel(msg.id);A.elapsed=0
+        or not (info and info.capabilities or {})[msg.mode]then send(packet('decline',{id=msg.id}),peer);return true end
+      S.activity={id=msg.id,mode=msg.mode,status='incoming',peer=peer,initiator=false};S.channel(msg.id);A.elapsed=0
     else
-      local a=S.activity;if not a or a.id~=msg.id then return true end
+      local a=S.activity;if not a or a.id~=msg.id or a.peer~=peer then return true end
       if msg.kind=='accept' and a.status=='waiting'then begin()
       elseif msg.kind=='decline' and (a.status=='waiting' or a.status=='incoming')then
         S.channel(a.id):close();S.activity=nil;S.notice='Invitation declined'
@@ -77,9 +81,12 @@ return function(S,adapter,send)
     A.elapsed=A.elapsed+dt
     local a=S.activity
     if a and (a.status=='waiting' or a.status=='incoming')and A.elapsed>30 then
-      send(packet('decline',{id=a.id}));S.channel(a.id):close();S.activity=nil;S.notice='Invitation expired'
+      send(packet('decline',{id=a.id}),a.peer);S.channel(a.id):close();S.activity=nil;S.notice='Invitation expired'
     end
     if adapter.updateActivity then adapter.updateActivity(dt)end
+  end
+  function A.peerDisconnected(id)
+    if S.activity and S.activity.peer==id then local a=S.activity;if S.channels[a.id]then S.channels[a.id]:close()end;A.disconnect();S.notice='Other trainer disconnected'end
   end
   function A.disconnect()
     if adapter.abortActivity then adapter.abortActivity()end

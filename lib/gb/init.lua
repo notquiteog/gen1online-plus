@@ -3,20 +3,12 @@ return function(mod)
   local function loadLocal(path)return assert((loadstring or load)(assert(mod:read(path)),'@online/'..path))()end
   local GV=require('src.core.GameVersion')
   local adapter={generation=GV.generation(),game=GV.get()}
-  local remote,rider,attached
+  local peers={}
   local baseSprite
   local function rideAPI()local r=mod.find and mod.find("DRAMATIC_SKY_RIDE");return r and r.exports end
   local function game()return mod.world.game end
   local function world()local g=game();return g and (g.world or g.overworld)end
   mod.events:on('game.ready',function()local w=world();baseSprite=w and w.player and w.player.sprite end)
-  local function detach()
-    if attached and remote then
-      for _,list in ipairs({attached.npcs or {},attached.entities or {}})do
-        for i=#list,1,-1 do if list[i]==remote or list[i]==rider then table.remove(list,i)end end
-      end
-    end
-    attached=nil
-  end
   function adapter.position()
     local g,w=game(),world();local p=w and w.player
     if not g or not p or not w.map then return end
@@ -28,12 +20,23 @@ return function(mod)
       moving=p.moving,skyBusy=worldBusy==true,busy=worldBusy or (mounted and mounted.mode=='fly'),
       name=g.save and g.save.player and g.save.player.name or 'TRAINER'}
   end
-  function adapter.clearPeers()detach();remote=nil;rider=nil end
-  function adapter.peer(p)
+  local function peerState(id)
+    local remote,rider,attached
+    local state={}
+  local function detach()
+    if attached and remote then
+      for _,list in ipairs({attached.npcs or {},attached.entities or {}})do
+        for i=#list,1,-1 do if list[i]==remote or list[i]==rider then table.remove(list,i)end end
+      end
+    end
+    attached=nil
+  end
+  function state.clear()detach();remote=nil;rider=nil end
+  function state.peer(p)
     if not remote or remote.map~=p.map then
       detach()
-      remote={id='gen1online_room_peer',name='ONLINE TRAINER',map=p.map,
-        px=p.px,py=p.py,passable=true,visible=true,netPeer=true,def={index=820000,sprite='SPRITE_RED',movement='STAY',x=p.x,y=p.y}}
+      remote={id='gen1online_room_peer_'..id,name='ONLINE TRAINER',map=p.map,
+        px=p.px,py=p.py,passable=true,visible=true,netPeer=true,def={index=820000+2*(tonumber(id:match('%d+'))or 0),sprite='SPRITE_RED',movement='STAY',x=p.x,y=p.y}}
       function remote:update()end -- Only the network snapshot owns this pose.
       function remote:pose()
         local w=world();local sprite=self.mountSprite or baseSprite or (w and w.player and w.player.sprite)
@@ -53,7 +56,7 @@ return function(mod)
     remote.mountSprite=visual and visual.mount;remote.height=visual and p.ride.height or 0
     if visual and visual.rider then
       if not rider then
-       rider={id='gen1online_room_rider',passable=true,visible=true,netPeer=true,def={index=820001,sprite='SPRITE_RED',movement='STAY'}}
+       rider={id='gen1online_room_rider_'..id,passable=true,visible=true,netPeer=true,def={index=820001+2*(tonumber(id:match('%d+'))or 0),sprite='SPRITE_RED',movement='STAY'}}
        function rider:update()end
        function rider:pose()return self.sprite,self.px,self.py-(self.height or 0)-(self.riderLift or 8),self.facing,self.phase or 0,false end
        rider.draw=remote.draw
@@ -63,7 +66,7 @@ return function(mod)
     remote.cellX,remote.cellY=p.x,p.y;remote.targetPx,remote.targetPy=p.px,p.py
     remote.facing=p.facing;remote.moving=p.moving;remote.clock=remote.clock or 0
   end
-  function adapter.update(dt)
+  function state.update(dt)
     if not remote then return end
     local w=world()
     if attached~=w or not w or not w.map or w.map.id~=remote.map then detach()end
@@ -84,6 +87,12 @@ return function(mod)
     remote.clock=remote.clock+dt*60
     if rider then rider.px=remote.px;rider.py=remote.py;rider.cellX=remote.cellX;rider.cellY=remote.cellY;rider.facing=remote.facing;rider.height=remote.height;rider.phase=remote.moving and math.floor(remote.clock/8)%2 or 0 end
   end
+    return state
+  end
+  function adapter.peer(p,id)id=id or 'remote';peers[id]=peers[id]or peerState(id);peers[id].peer(p)end
+  function adapter.removePeer(id)if peers[id]then peers[id].clear();peers[id]=nil end end
+  function adapter.clearPeers()for id in pairs(peers)do adapter.removePeer(id)end end
+  function adapter.update(dt)for _,state in pairs(peers)do state.update(dt)end end
   loadLocal('lib/gb/link.lua')(mod,adapter)
   if adapter.generation==2 then loadLocal('lib/gen2/link.lua')(mod,adapter)end
   local session=loadLocal('lib/crossgen/session.lua')(mod,loadLocal,adapter)

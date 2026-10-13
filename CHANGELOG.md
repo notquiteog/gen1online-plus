@@ -4,6 +4,8 @@ Publish optional native Gen3 ride poses to other players while preserving standa
 
 ## Unreleased
 
+Protocol-2 LAN/direct-IP rooms support multiple peers with selected-player invitations, private activity channels, concurrent pairs, per-player rendering and individual kicks. Added standalone ROM-free dedicated server with central ground/sky claim authority, elected simulation leases and server-side stale-owner rejection. Real ENet four-client lifecycle tests and a 64-client roster/chat load pass; these use mock native-activity adapters and do not certify 64 full game renderers or WAN performance. Dedicated startup, LAN discovery initialization, console list/kick/stop and all three generation entity adapters are covered. See `server/README.md` for setup and remaining native-game verification scope.
+
 Gen3 peers now publish optional ground/Surf/flight mode and species metadata from Dramatic Ride, matching the GB network pose contract. Native composite mount graphics remain unchanged; Online still works without Ride or with older providers. Optional-provider regression covers missing provider, missing API, invalid species, mount modes and dismount cleanup. Real paired FireRed, LeafGreen, Ruby, Sapphire and Emerald Surf hop/shore return and remote pose cleanup pass independently on engine0.3.73; all seven mods load, unrelated ground/sky contact encounters are disabled for this fixture.
 
 ## 0.9.2 — 2026-10-05

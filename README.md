@@ -1,3 +1,5 @@
+> Development branch: protocol-2 multi-player LAN/direct-IP rooms and a standalone dedicated server are implemented. See [dedicated server setup and verification scope](server/README.md). Older two-player/relay descriptions below describe the previous protocol and are not the new room contract.
+
 ## Local and direct internet games
 
 Open **ONLINE** from the pause menu. The host selects **HOST LOCAL**; the other player selects **JOIN** and chooses the automatically discovered trainer. Both players must use the same game edition and compatible mod versions. Full rooms disappear from discovery; entries expire when their host stops responding.

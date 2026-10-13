@@ -29,24 +29,27 @@ return function(mod,loadLocal,adapter,S,send)
  local function position()
   local out=posed(adapter.position());if out then out.busy=out.busy or S.activity~=nil end;return out
  end
+ local function localAuthority()return S.host or(S.ecologyOwners and S.ecologyOwners.skies==S.localId)end
+ function M.validate(p,row,context,map)local owner=find();return owner and owner.canClaimSky(posed(p),row,context,map)==true end
  local function configure()
   local found=find()
   -- Old/incomplete peers keep standalone skies. A removed capability/provider
   -- also unregisters a previous agreement and invalidates all old callbacks.
-  if not S.connected or(S.peerCapabilities or{}).sharedSkies~=true or not found then
+  if not S.connected or(not S.host and(S.hostCapabilities or S.peerCapabilities or{}).sharedSkies~=true) or not found then
    if provider then M.clear()end;return
   end
-  if provider==found and session==S.session and role==S.host then return true end
-  M.clear();provider=found;session=S.session;role=S.host
+  if provider==found and session==S.session and role==localAuthority() then return true end
+  local oldClient=provider==found and session==S.session and client or nil
+  M.clear();provider=found;session=S.session;role=localAuthority()
   local owner,room=found,session
-  local function current()return provider==owner and session==room and S.session==room and S.host==role and S.connected end
+  local function current()return provider==owner and session==room and S.session==room and localAuthority()==role and S.connected end
   local ownClient
   client=World.new{session=session,send=function(_,msg)
    if not current()then return end
    if S.host then queue[#queue+1]={toHost=true,msg=msg}else send(msg)end
   end,onSnapshot=function(map,rows,revision)
    if not current()then return end
-   local applied=owner.applySharedSkyFieldSnapshot{domain='SKY',map=map,spawns=rows,revision=revision,localAuthority=S.host==true}
+   local applied=owner.applySharedSkyFieldSnapshot{domain='SKY',map=map,spawns=rows,revision=revision,localAuthority=localAuthority()==true}
    if applied==true and host then host:acknowledgeSnapshot(map,revision)end
   end,onEncounter=function(row,map)
    local p=position();if not current()or not p or p.busy or p.map~=map then return false end
@@ -54,6 +57,7 @@ return function(mod,loadLocal,adapter,S,send)
   end,onDenied=function(map,id,reason)
    if current()then owner.denySharedSkyFieldContact(map,id);S.notice=reason end
   end}
+  if oldClient then client.pending=oldClient.pending;client.active=oldClient.active;client.sequence=oldClient.sequence;client.maps=oldClient.maps end
   ownClient=client
   if S.host then
    host=World.new{host=true,session=session,canClaim=function(p,row,context,map)
@@ -61,11 +65,11 @@ return function(mod,loadLocal,adapter,S,send)
    end,send=function(peer,msg)
     if not current()then return end
     if peer==nil or peer=='local'then queue[#queue+1]={msg=msg}end
-    if peer~='local'then send(msg)end
+    if peer~='local'then send(msg,peer)end
    end}
   end
   local accepted=owner.registerSharedSkyProvider('gen1online-plus',{
-   role=S.host and 'host' or 'guest',localAuthority=S.host==true,
+   role=localAuthority() and 'host' or 'guest',localAuthority=localAuthority()==true,
    requestClaim=function(map,id,context)
     if not current()or client~=ownClient then return false,'not connected'end
     local p=position();if not p or p.busy then return false,'player busy'end
@@ -79,10 +83,10 @@ return function(mod,loadLocal,adapter,S,send)
   if accepted~=true then M.clear();return end
   return true
  end
- function M.handle(msg)
+ function M.handle(msg,peer)
   if type(msg)~='table'or msg.type~='shared_skies'then return false end
   if not configure()then return true end
-  if host then host:handle('remote',msg,posed(S.peers.remote))else client:handle('host',msg,nil,true)end
+  if host then host:handle(peer or 'remote',msg,posed(S.peers[peer or 'remote']))else client:handle('host',msg,nil,true)end
   return true
  end
  local function drain()
@@ -100,18 +104,19 @@ return function(mod,loadLocal,adapter,S,send)
   end
   return #queue==0
  end
+ function M.peerDisconnected(id)if host then host:disconnect(id)end end
  function M.update(dt)
   if not configure()then return end
   if not drain()then return end
   tick=tick+math.max(0,tonumber(dt)or 0)
-  if host and tick>=.1 then
+  if (host or localAuthority())and tick>=.1 then
    tick=tick%.1;local p=position();local maps={}
    if p and p.map then maps[p.map]=true end
    for _,id in ipairs(provider.sharedSkyNeighborMaps and provider.sharedSkyNeighborMaps()or{})do maps[id]=true end
-   if S.peers.remote and S.peers.remote.map then maps[S.peers.remote.map]=true end
+   for _,p in pairs(S.peers)do if p.map then maps[p.map]=true end end
    for id in pairs(maps)do
     local snapshot=provider.sharedSkyFieldSnapshot(id)
-    if snapshot then host:publish(snapshot)end
+    if snapshot then if host then host:publish(snapshot)elseif S.publishSky then S.publishSky(snapshot)end end
    end
   end
   drain()

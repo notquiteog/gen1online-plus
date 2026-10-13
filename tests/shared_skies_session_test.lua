@@ -56,7 +56,7 @@ local function row(id,alt)return{id=id,species='PIDGEY',level=7,x=80,y=96,alt=al
 H.rows.TOWN.bird1=row('bird1');H.rows.TOWN.bird2=row('bird2')
 check(H.M.available()and G.M.available(),'complete local provider advertises capability')
 step();check(not H.config and not G.config,'disconnected keeps standalone ecology')
-H.S.connected=true;G.S.connected=true;step();check(not H.config and not G.config,'peer capability required before registration')
+H.S.connected=true;G.S.connected=true;step();check(H.config and not G.config,'host owns ecology alone; guest requires host capability')
 H.S.peerCapabilities.sharedSkies=true;G.S.peerCapabilities.sharedSkies=true;step()
 check(H.config.localAuthority and G.config.role=='guest','handshake selects one authority')
 check(G.rows.TOWN.bird1 and G.rows.TOWN.bird2,'guest receives host population')
