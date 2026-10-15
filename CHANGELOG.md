@@ -1,3 +1,21 @@
+## 0.11.1 — 2026-10-15
+
+Publishes the two previously unpushed four-native-client QA commits. Historical
+0.3.85 Yellow, Crystal and Emerald completion evidence is now recorded in the
+repository. QA drivers use real-time deadlines and paced fixed-dt updates, with
+an optional QA_PORT override, so uncapped clients do not time out their peers
+before the local network can progress. Fixes the LAN rejoin test's missing
+host-address loader and aligns current card/README versions. Runtime networking,
+protocol 2 and optional companion contracts are unchanged.
+
+On official 0.3.88, 21 Lua suites and 78 real ENet checks pass. Four native
+Emerald clients with Online + Double Battles completed a guest-to-guest double
+draw, returned to the overworld, retained three peers each and delivered DONE
+to both observers. Online alone also completed the same four-client native
+singles/return flow with all peers retained. The all-seven native run reached battle commands but exceeded
+its five-minute limit; current all-seven battle completion remains unverified.
+See tools/qa/FOUR_CLIENTS.md for exact scope and historical evidence.
+
 ## 0.11.0 — 2026-10-13
 
 Host/Join controller menus, LAN discovery, saved servers, local/public host addresses, roster and kicking. Adds a headless dedicated server with VPS/systemd instructions and 128-player capacity; batches position traffic and keeps Wilds optional. Protocol 2: all room participants must update together. Verified 336 localhost ENet checks including 128 simultaneous clients, native-font menu checks, actual dedicated-server discovery/shutdown and public-IP lookup. Four native Crystal clients completed a double battle and stayed connected. Native Yellow/Gen3 completion and WAN/128-rendered-client performance remain unverified. See server/README.md for dedicated hosting.

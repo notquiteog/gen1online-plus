@@ -1,5 +1,5 @@
 -- Run four isolated *-qa processes with QA_ROLE=host/a/b/c and QA_MODE=single/double.
--- Requires Online; GB doubles additionally require Double Battles. Other mods remain optional.
+-- Requires Online; doubles additionally require Double Battles. Other mods remain optional.
 -- Exercises real room invitations and native battle entry; no intro/turn bypass.
 return function(game)
  assert(love.filesystem.getIdentity():match('%-qa$'))
@@ -7,7 +7,8 @@ return function(game)
  love.window.setMode(640,480,{vsync=0,msaa=0});game.options.animations=false;game.options.textSpeed='fast'
  love.joystick.getJoysticks=function()return{}end;love.joystick.getJoystickCount=function()return 0 end
  local role=os.getenv('QA_ROLE')or'host';local host=role=='host';local fighter=role=='a'or role=='b';local leader=role=='a';local mode=os.getenv('QA_MODE')or'single'
- local R=require('src.mods.Runtime');local update=game.update;game.update=function(self,dt)return R.call('core.update',update,self,dt)end
+ -- Driver ticks use fixed dt even with vsync off; pace network peers in real time.
+ local R=require('src.mods.Runtime');local update=game.update;game.update=function(self,dt)love.timer.sleep(1/60);return R.call('core.update',update,self,dt)end
  game:_handleBootAction({action='new_game',start={map=require('src.core.GameVersion').get()=='emerald'and'EM_OLDALE_TOWN'or'FR_PALLET_TOWN',x=role=='a'and 7 or role=='b'and 8 or role=='host'and 5 or 10,y=8,facing='down'}})
  local space=require('src.core.game3.scripting.space');space.runOnFrame=function()end;local vm=space.getVm();if vm then vm:halt(true)end;require('src.ui.game3.message').reset()
  local Party=require('src.core.game3.party');game.session.name=role;game.session.party={}
@@ -16,9 +17,13 @@ return function(game)
  local PartyMenu=require('src.ui.game3.party_menu')
  U.wait(40)
  local S=assert(game.mods.exports['gen1online-plus'].multiplayer)
- if host then assert(S.hostLan(27992,64,'203.0.113.10'))else U.wait(100);assert(S.joinLan('127.0.0.1:27992'))end
+ local port=tonumber(os.getenv('QA_PORT'))or 27992
+ if host then assert(S.hostLan(port,64,'203.0.113.10'))else U.wait(100);assert(S.joinLan('127.0.0.1:'..port))end
  local function untilTrue(fn,label,n)
-  for i=1,n or 1800 do if fn()then return end;U.wait(1)end;error(label..' '..tostring(S.notice))
+  -- Uncapped clients advance at different rates while their peers import.
+  local deadline=love.timer.getTime()+(n or 1800)/60
+  repeat if fn()then return end;U.wait(1)until love.timer.getTime()>=deadline
+  error(label..' '..tostring(S.notice))
  end
  untilTrue(function()return S.connected and #S.roster()==3 end,'room connection')
  assert(S.say('QA '..role));U.wait(30);U.shot(game,dir..'/room.png')

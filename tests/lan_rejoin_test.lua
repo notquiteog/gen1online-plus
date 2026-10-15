@@ -3,6 +3,7 @@ local sockets,cleanups={},0
 package.loaded['src.link.Net']={defaultPort=function()return 7777 end}
 love={math={random=function()return 123 end}}
 local function localModule(path)
+ if path=='lib/crossgen/host_address.lua'then return dofile(path)end
  if path:find('room_transport',1,true)then return{new=function()
   local n={inbox={}};sockets[#sockets+1]=n
   function n:host(port)self.port=port;self.address='127.0.0.1:'..port;return true end

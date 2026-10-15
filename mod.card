@@ -1,15 +1,15 @@
 [card]
 id = "gen1online-plus"
-title = "Gen1Online++"
-version = "0.8.0-test.2"
+title = "Gen1Online+"
+version = "0.11.1"
 author = "Antigravity & User"
 category = "CONTENT"
 tags = ["multiplayer", "coop", "online", "pvp", "casino", "crystal"]
-description = "Multiplayer online co-op overworld exploration, 24/7 GTS Trading, PVP Battles, and Casino Lounge for Pokemon Crystal."
+description = "Standalone Gen1/2/3 rooms, overworld presence, chat, native singles and trading, with optional doubles, riding and shared encounters."
 
 [features]
-- Real-time overworld co-op movement sync (Human Trainer CHRIS + Follower Pokemon)
-- 24/7 Persistent GTS Server & Global Trading System
-- Celadon Game Corner Casino Lounge with Crash, Tube Flyer, and Prize Case
-- Distance-based PVP Link Battles (integrated native LinkBattle engine)
-- 3D Voxel diorama compatibility
+- LAN discovery, direct-address rooms, saved servers and roster controls
+- Native singles and trading across Gen1/2/3
+- Optional Double Battles, Dramatic Ride, Wilds and Wild Skies integration
+- Native generation UI; compatible with optional presentation mods
+- Separate opt-in historical Crystal GTS and casino services

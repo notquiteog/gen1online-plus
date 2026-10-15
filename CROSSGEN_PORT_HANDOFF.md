@@ -1,3 +1,18 @@
+## 2026-10-15 QA maintenance release
+
+Release 0.11.1 from the two committed/unpushed four-client fixtures and current
+QA fixes. Official engine remains 0.3.88. On Linux, four native Emerald clients
+with Online + Double Battles completed a double draw and normal overworld
+return with all peers and both observer DONE messages retained. Runtime network
+code is unchanged; fixed-dt QA drivers now pace peers and use real-time waits.
+Online alone also completed native singles/return with all four clients and
+both observer DONE messages. 21 Lua suites and 78 real ENet checks pass. The all-seven native run reached
+commands but timed out at five minutes; do not claim current full-stack battle
+completion. Historical 0.3.85 Yellow/Crystal/Emerald completion is preserved in
+`tools/qa/FOUR_CLIENTS.md` and supersedes the old pending-worker note below.
+Evidence: `/home/admin/Projects/.scratch/gen3-20261015b/online-paired-88/`.
+All imports and mutated saves stayed in disposable QA identities.
+
 ## 2026-10-13 room audit
 
 Host/Join remain the only disconnected main choices. Host now shows port,

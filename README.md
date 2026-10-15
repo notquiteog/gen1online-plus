@@ -1,4 +1,11 @@
-> Development branch: protocol-2 multi-player LAN/direct-IP rooms and a standalone dedicated server are implemented. See [dedicated server setup and verification scope](server/README.md). Older two-player/relay descriptions below describe the previous protocol and are not the new room contract.
+## 0.11.1 — Native-client QA maintenance
+
+Publishes the completed four-client verification fixtures and results, corrects
+fixture timing for uncapped native clients, and refreshes release metadata.
+Runtime networking and the wire protocol are unchanged. All companion mods
+remain optional. See [four-client evidence and limits](tools/qa/FOUR_CLIENTS.md).
+
+> Protocol-2 multi-player LAN/direct-IP rooms and a standalone dedicated server are implemented. See [dedicated server setup and verification scope](server/README.md). Older two-player/relay descriptions below describe the previous protocol and are not the new room contract.
 
 ## Local and direct internet games
 
@@ -22,9 +29,9 @@ Numbered release of the tested 0.8.0-test.2 build. Runtime and assets are unchan
 
 # Gen1Online+
 
-Current test release: **0.8.0-test.2**. Persistent two-player rooms provide overworld presence, chat bubbles, walk-up trading and native single battles across Gen 1, Crystal, FireRed and LeafGreen. Optional Double Battles enables doubles; Dramatic Ride, Wilds and Wild Skies integrate when installed without becoming dependencies.
+Current release: **0.11.1**. Protocol-2 rooms support up to 128 participants, overworld presence, chat, trading and native singles across Gen 1/2/3. The capacity limit has transport-level coverage; it is not a claim of 128 simultaneous native renderers. Optional Double Battles enables doubles; Dramatic Ride, Wilds and Wild Skies integrate when installed without becoming dependencies.
 
-The host controls visible ground and sky populations. Ground captures require host approval. Sky birds remain reserved until battle results determine whether to consume or restore them. Both peers must use the same game and compatible versions. Public test releases precede the native gameplay verification pass; see [the changelog](CHANGELOG.md) and [cross-generation validation](docs/CROSSGEN_ROOMS.md) for limits.
+The host controls visible ground and sky populations. Ground captures require host approval. Sky birds remain reserved until battle results determine whether to consume or restore them. Both peers must use the same game and compatible versions. See [the changelog](CHANGELOG.md) and [cross-generation validation](docs/CROSSGEN_ROOMS.md) for limits.
 
 The historical Crystal service described below is separate from these cross-generation rooms.
 
