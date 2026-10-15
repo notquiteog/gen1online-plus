@@ -1,3 +1,7 @@
+## 0.11.2 — 2026-10-15
+
+Maintenance packaging release for the coordinated seven-mod update. Runtime behavior is unchanged from 0.11.1. Includes the standalone dedicated server, Host/Join browser, LAN discovery, saved servers, roster and kick controls. Existing protocol, integration and verification limitations remain unchanged; this release does not claim new WAN or large-room performance validation.
+
 ## 0.11.1 — 2026-10-15
 
 Publishes the two previously unpushed four-native-client QA commits. Historical
