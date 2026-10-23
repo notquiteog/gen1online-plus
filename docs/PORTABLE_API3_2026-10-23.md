@@ -14,7 +14,9 @@ Fetch, native link/party adapters and the documented Gen2 compatibility facade.
   old `mod.world.game` field. Native link/party handles remain generation-native.
 - Public storage requires `(game, key[, value])`. Room server lists load lazily
   after a live game exists, reload on `game.ready`, and write only to that
-  playthrough. Server/save/account/chat persistence in the older Gen2 GTS
+  playthrough. Storage accepts data-only tables; scalar URL/chat preferences
+  use a versioned envelope and existing save/account tables remain intact.
+  Server/save/account/chat persistence in the older Gen2 GTS
   path uses the same explicit current game scope. A failed write is not
   reported as a successful online save. The old GTS prefill filesystem read/
   write now uses the public `gts_server_url` storage key, which also fixes its
@@ -63,6 +65,9 @@ Fetch, native link/party adapters and the documented Gen2 compatibility facade.
   scopes, game.ready reload, legacy GTS save/address keys and write refusal.
 - Native 0.3.96 standalone loads pass Red, Gold, Crystal, FireRed and Emerald
   with exit 0, no loader errors and zero legacyReport entries on those paths.
+- Native saved-server UI read/remove passes all eleven editions. Gold,
+  Silver and Crystal additionally set/read the legacy GTS server prefill
+  through real engine Storage, verifying its table-valued scalar envelope.
 - This is not evidence of completed live network battles/trades in all eleven
   native editions, nor a claim that engine internals are fully replaceable.
   Broader standalone/combined native checks are coordinated at integration.

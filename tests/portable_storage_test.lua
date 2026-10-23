@@ -16,10 +16,10 @@ print('PASS public live-game storage contract, game.ready reload and isolated pl
 local storage=dofile('lib/scoped_storage.lua')(mod)
 local calls={};mod.storage={
  read=function(_,g,key)calls[#calls+1]={g,key};return buckets[g][key]end,
- write=function(_,g,key,value)buckets[g][key]=value;return true end,
+ write=function(_,g,key,value)assert(type(value)=='table','public Storage rejects scalars');buckets[g][key]=value;return true end,
  delete=function(_,g,key)buckets[g][key]=nil;return true end}
 mod.game=first;assert(storage.write('gts_server_url','https://first.example'))
-assert(storage.write('online_save.lua',{money=123}))
+assert(storage.write('online_save.lua',{money=123}));assert(storage.write('live_chat_notifications',false));assert(storage.read('live_chat_notifications')==false)
 mod.game=second;assert(storage.read('gts_server_url')==nil)
 assert(storage.write('gts_server_url','https://second.example'))
 assert(storage.delete('online_save.lua.bak'))

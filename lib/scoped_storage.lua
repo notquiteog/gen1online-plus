@@ -10,8 +10,16 @@ return function(mod)
   if not ok then return nil,'storage_error',tostring(value)end
   return value,code,message
  end
- function S.read(key)return call('read',key)end
- function S.write(key,value)local ok,code,message=call('write',key,value);return ok==true,code,message end
+ function S.read(key)
+  local value,code,message=call('read',key)
+  if type(value)=='table'and value.__gen1online_scalar_v1==true then return value.value,code,message end
+  return value,code,message
+ end
+ function S.write(key,value)
+  -- Storage accepts data-only tables, including for scalar preferences.
+  if type(value)~='table'then value={__gen1online_scalar_v1=true,value=value}end
+  local ok,code,message=call('write',key,value);return ok==true,code,message
+ end
  function S.delete(key)return call('delete',key)end
  return S
 end
