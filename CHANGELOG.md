@@ -1,3 +1,9 @@
+## 0.11.4 — Portable API3 (2026-10-23)
+
+Move to Portable API3 public game access, game-scoped table storage and asynchronous fetch lifecycle. Preserve saved server/chat values and GTS protocol behavior; remove unnecessary compute permission.
+
+Requires Gen1Recomp 0.3.96 or newer. No companion mod is required.
+
 ## 0.11.2 — 2026-10-15
 
 Maintenance packaging release for the coordinated seven-mod update. Runtime behavior is unchanged from 0.11.1. Includes the standalone dedicated server, Host/Join browser, LAN discovery, saved servers, roster and kick controls. Existing protocol, integration and verification limitations remain unchanged; this release does not claim new WAN or large-room performance validation.

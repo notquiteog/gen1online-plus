@@ -1,7 +1,7 @@
 {
   "id": "gen1online-plus",
   "name": "Gen1Online+",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "entry": "main.lua",
   "author": "Gamecorner33, martin2844 (Original Blackjack Mod Creator), and Antigravity",
   "description": "Rooms for up to 128 players, overworld presence, chat, native singles and trading across Gen1/2/3; optional doubles, synchronized riding and host-owned ground/sky encounters.",
