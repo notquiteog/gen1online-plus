@@ -36,6 +36,8 @@
     return function() return type(res) == "table" and res or {} end
   end
 
+  local persistence = loadLocal(mod, "lib/scoped_storage.lua")(mod)
+
   -- Quests/NPCs are loaded from their modules later in the factory (see the
   -- module-loading section near the bottom); the empty defaults keep the
   -- overworld hooks from nil-calling anything if a module fails to load.
@@ -89,6 +91,8 @@
   end
 
 
+  -- Legacy Crystal GTS features require the documented Gen2 Gen1-shaped shim.
+  -- Portable room adapters below use the live public mod.game service.
   local Game, Input, OverworldState, BattleState = require("src.core.Game"), require("src.core.Input"), require("src.world.OverworldController"), require("src.battle.BattleState")
   local LinkBattle, Protocol, Party, Boxes = require("src.link.LinkBattle"), require("src.link.Protocol"), require("src.pokemon.Party"), require("src.pokemon.Boxes")
   local Collision, Font, Menu, TextBox = require("src.world.Collision"), require("src.render.Font"), require("src.ui.Menu"), require("src.render.TextBox")
@@ -141,7 +145,7 @@
     if fromFile and #fromFile > 0 then
       GTS_SERVER_URL = fromFile
     else
-      local stored = storageRead and storageRead("gts_server_url")
+      local stored = persistence.read("gts_server_url")
       if stored and type(stored) == "string" and #stored > 0 then
         GTS_SERVER_URL = stored
       else
@@ -678,7 +682,7 @@
   -- Use ChatState.* everywhere; local aliases below are NOT new locals (upvalues via table)
   function loadChatNotifPref()
     if ChatState.loaded then return ChatState.liveEnabled end
-    local stored = storageRead and storageRead("live_chat_notifications")
+    local stored = persistence.read("live_chat_notifications")
     if type(stored) == "boolean" then ChatState.liveEnabled = stored
     elseif currentGame and currentGame.save and currentGame.save.modData and currentGame.save.modData["gen1online-plus"] and type(currentGame.save.modData["gen1online-plus"].liveChat) == "boolean" then
       ChatState.liveEnabled = currentGame.save.modData["gen1online-plus"].liveChat
@@ -688,7 +692,7 @@
   end
   function saveChatNotifPref(val)
     ChatState.liveEnabled = val and true or false
-    if currentMod and currentMod.storage and currentMod.storage.write then pcall(currentMod.storage.write, currentMod.storage, "live_chat_notifications", ChatState.liveEnabled) end
+    persistence.write("live_chat_notifications", ChatState.liveEnabled)
     if currentGame and currentGame.save then
       currentGame.save.modData = currentGame.save.modData or {}
       currentGame.save.modData["gen1online-plus"] = currentGame.save.modData["gen1online-plus"] or {}
@@ -2113,31 +2117,6 @@
     return nil
   end
 
-  local function storageRead(key)
-    key = tostring(key or ""):gsub("%.lua.*$", "")
-    if currentMod and currentMod.storage and currentMod.storage.read then
-      local ok, res = pcall(currentMod.storage.read, currentMod.storage, key)
-      if ok and res ~= nil then return res end
-    end
-    return nil
-  end
-
-  local function storageWrite(key, value)
-    key = tostring(key or ""):gsub("%.lua.*$", "")
-    if currentMod and currentMod.storage and currentMod.storage.write then
-      local ok, res = pcall(currentMod.storage.write, currentMod.storage, key, value)
-      return ok and res
-    end
-    return false
-  end
-
-  local function storageRemove(key)
-    key = tostring(key or ""):gsub("%.lua.*$", "")
-    if currentMod and currentMod.storage and currentMod.storage.delete then
-      pcall(currentMod.storage.delete, currentMod.storage, key)
-    end
-  end
-
   -- Normalize + adopt a server address for this session (and persist it as
   -- the next prefill). gts_config.txt still wins when present, so a device
   -- pinned to one server keeps working; everyone else is asked every time.
@@ -2159,14 +2138,14 @@
     _G.GTS_SERVER_URL = url
     GTS_SERVER_URL_OVERRIDDEN = true
     if persist ~= false then
-      pcall(function() love.filesystem.write("g1oplus_server_url.txt", url) end)
+      persistence.write("gts_server_url", url)
     end
     print("[Gen1Online+] server url set to " .. url)
     return url
   end
   function ServerAddressScreen.storedUrl()
-    local ok, content = pcall(love.filesystem.read, "g1oplus_server_url.txt")
-    if ok and type(content) == "string" and #content > 0 then return content end
+    local content = persistence.read("gts_server_url")
+    if type(content) == "string" and #content > 0 then return content end
     return nil
   end
   -- ALWAYS ask which server to join. The last address is only the prefill:
@@ -2201,12 +2180,12 @@
   loadServerUrl()
 
   loadOnlineSave = function(game)
-    local save = storageRead("online_save")
+    local save = persistence.read("online_save")
     if save and type(save) == "table" and save.onlineAccount and save.onlineAccount.token then
       return save
     end
 
-    local acc = storageRead("online_account")
+    local acc = persistence.read("online_account")
     if acc and type(acc) == "table" and acc.token then
       local curSave = (game and game.save) or (Game and Game.save) or {}
       curSave.onlineAccount = acc
@@ -2233,10 +2212,8 @@
       saveTable = currentGame.save
     end
     if not saveTable or type(saveTable) ~= "table" then return false end
-    storageWrite("online_save", saveTable)
-    if saveTable.onlineAccount then
-      storageWrite("online_account", saveTable.onlineAccount)
-    end
+    if not persistence.write("online_save", saveTable)then return false end
+    if saveTable.onlineAccount and not persistence.write("online_account", saveTable.onlineAccount)then return false end
 
     return true
   end
@@ -2286,7 +2263,7 @@
 
   -- Sync Local Trainer Profile & Online Account to Server
   loadOnlineAccount = function(save)
-    local acc = storageRead("online_account")
+    local acc = persistence.read("online_account")
     if not acc and save and save.onlineAccount and save.onlineAccount.token then
       acc = save.onlineAccount
     end
@@ -2316,7 +2293,7 @@
     save.onlineAccount.spriteId = localSelectedSprite or "SPRITE_RED"
     save.onlineAccount.title = localTrainerTitle or "ACE TRAINER"
     save.onlineAccount.favoriteMon = localFavoriteMon or "PIKACHU"
-    storageWrite("online_account", save.onlineAccount)
+    persistence.write("online_account", save.onlineAccount)
   end
 
   syncLocalProfile = function(game, winDelta)
@@ -5227,9 +5204,9 @@
               label = "YES, RESET",
               onSelect = function()
                 local sf, bf, tf = getOnlineSaveFiles()
-                storageRemove(sf)
-                storageRemove(bf)
-                storageRemove(tf)
+                persistence.delete(sf)
+                persistence.delete(bf)
+                persistence.delete(tf)
                 openFreshOnlinePlayerMenu(game)
               end
             }

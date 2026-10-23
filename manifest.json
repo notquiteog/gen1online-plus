@@ -7,7 +7,7 @@
   "description": "Rooms for up to 128 players, overworld presence, chat, native singles and trading across Gen1/2/3; optional doubles, synchronized riding and host-owned ground/sky encounters.",
   "category": "CONTENT",
   "assets_transforms": "transforms.lua",
-  "api": 2,
+  "api": 3,
   "games": [
     "gen1",
     "gen2",
@@ -18,8 +18,8 @@
   ],
   "permissions": [
     "engine_internals",
-    "network",
-    "compute"
+    "network"
   ],
-  "github": "notquiteog/gen1online-plus"
+  "github": "notquiteog/gen1online-plus",
+  "game_version": ">=0.3.96 <2.0.0"
 }

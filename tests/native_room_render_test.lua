@@ -8,7 +8,7 @@ for _,gen in ipairs({1,2,3})do
  package.loaded['src.ui.Theme']={cursor=0xED};package.loaded['src.render.Font']=F;package.loaded['src.ui.game3.font']=F
  package.loaded['src.ui.game3.window']={template=function()return{}end,fill=noop,cursorPx=noop,stdFrame=function()frames=frames+1 end}
  package.loaded['src.world.OverworldController']={interact=noop};package.loaded['src.core.game3.field']={interact=noop}
- local mod={world={game={input={}}},events={on=noop},hooks={wrap=function(_,key,fn)hooks[key]=fn end}}
+ local mod={game={input={}},events={on=noop},hooks={wrap=function(_,key,fn)hooks[key]=fn end}}
  local point={map='town',px=0,py=0,height=40};local projected
  local art={gen3={camera={active=true}},lib={require=function(name)assert(name=='Voxel3D');return{project=function(x,y,z)projected={x,y,z};return 640,360 end,size=function()return 1280,720 end}end}}
  mod.find=function(name)if name=='BATTLE_ART_VOXEL_FORK'then return{exports=art}end end

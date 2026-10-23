@@ -1,44 +1,40 @@
--- Display-only public IPv4 discovery. Never blocks the game/network loop and
--- never determines whether a room may host. No player or save data is sent.
+-- Display-only public IPv4 discovery through the engine-owned HTTP worker.
+-- No player/save data is sent; unavailable networking never prevents hosting.
 local M={}
 function M.ipv4(value)
- if type(value)~='string' or #value>64 then return end
+ if type(value)~='string'or #value>64 then return end
  value=value:match('^%s*(.-)%s*$')
  if not value:match('^%d+%.%d+%.%d+%.%d+$')then return end
  for part in value:gmatch('%d+')do if #part>3 or tonumber(part)>255 then return end end
  return value
 end
-local worker=[[
-local output=...
-local ok,value=pcall(function()
- local secure,http=pcall(require,'ssl.https')
- if not secure then http=require('socket.http')end
- http.TIMEOUT=4
- local body=''
- local _,code=http.request{url=(secure and 'https' or 'http')..'://api.ipify.org',redirect=false,
-  sink=function(chunk)if chunk then body=body..chunk;if #body>64 then return nil,'Response too large'end end;return 1 end}
- if tonumber(code)==200 then return body end
-end)
-output:push(ok and value or '')
-]]
-function M.new()
- local A={};local channel,thread,age
- function A.clear()channel,thread,age=nil,nil,0;A.ip=nil;A.status=nil end
+function M.new(fetch)
+ local A={};local handle,age
+ local function release(cancel)
+  local old=handle;handle=nil
+  if old then
+   if cancel then pcall(fetch.cancel,fetch,old)end
+   pcall(fetch.release,fetch,old)
+  end
+ end
+ function A.clear()release(true);age=0;A.ip=nil;A.status=nil end
  function A.start(override)
   A.clear();A.ip=M.ipv4(override)
   if A.ip then return end
   A.status='Unavailable'
   local ok=pcall(function()
-   assert(love and love.thread and love.thread.newThread and love.thread.newChannel,'Background networking unavailable')
-   channel=love.thread.newChannel();thread=love.thread.newThread(worker);thread:start(channel)
+   if not(fetch and fetch:available())then return end
+   handle=fetch:get('https://api.ipify.org',{maxSeconds=4,accept='text/plain'})
   end)
-  if ok then A.status='Looking up...'else channel,thread=nil,nil end
+  if ok and handle then A.status='Looking up...'else release(true)end
  end
  function A.update(dt)
-  if not channel then return end
-  age=age+(dt or 0);local value=channel:pop()
-  if value~=nil then A.ip=M.ipv4(value);A.status=A.ip and nil or'Unavailable';channel,thread=nil,nil
-  elseif age>10 or (thread.getError and thread:getError())then A.status='Unavailable';channel,thread=nil,nil end
+  if not handle then return end
+  age=age+(dt or 0)
+  local ok,value=pcall(fetch.poll,fetch,handle)
+  if not ok or type(value)~='table'then A.status='Unavailable';release(true)
+  elseif value.status=='ok'then A.ip=M.ipv4(value.body);A.status=A.ip and nil or'Unavailable';release(false)
+  elseif value.status~='pending'or age>10 then A.status='Unavailable';release(true)end
  end
  return A
 end

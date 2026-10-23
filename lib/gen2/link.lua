@@ -20,7 +20,7 @@ return function(mod,adapter)
     if current then return false,'Native link already active'end
     if mode~='single'and mode~='trade'and mode~='double'then return false,'Unsupported link mode'end
     if mode=='double'and not provider()then return false,'Double Battles is required for doubles.'end
-    local game=mod.world.game
+    local game=mod.game
     if not(game.save and game.save.party and #game.save.party>0)then return false,'No Pokemon in party'end
     if mode=='trade'then TradeBarrier.wrap(transport,host,'trade_confirm')end
     local net=Session.new(transport,{role=host and 'host'or'guest',kind='link'})
@@ -31,7 +31,7 @@ return function(mod,adapter)
   local function finish(result)
     if not current or current.finished then return end
     local c=current;c.finished=true
-    local game=mod.world.game
+    local game=mod.game
     game.linkSession=nil
     if game.linkNet==current.net then game.linkNet=nil end
     current.done(result)
@@ -46,7 +46,7 @@ return function(mod,adapter)
       if c.peer then
         c.verdict=Handshake.checkCompat(c.hello,c.peer)
         if not Handshake.battleAllowed(c.verdict)then finish('incompatible games or battle mods');return end
-        local game=mod.world.game
+        local game=mod.game
         if c.mode=='trade'then
           local screen,why=TradeScreen(game,c.net,c.peer.name,finish,TradeSession,c.host)
           if not screen then finish(why or 'trade failed');return end
@@ -63,7 +63,7 @@ return function(mod,adapter)
         if type(packet.mons)~='table'or #packet.mons<1 or #packet.mons>6 then finish('invalid party');return end
         local seed=c.host and c.seed or tonumber(packet.seed)
         if not seed or seed~=seed or seed<1 or seed>2^30 then finish('invalid seed');return end
-        local game=mod.world.game
+        local game=mod.game
         local opts={myParty=c.mine,theirParty=packet.mons,theirName=c.peer.name,
           seed=seed,verdict=c.verdict,strict=Handshake.strict(c.verdict),keepNetOpen=true}
         local proxy=c.mode=='double'and Doubles.transport(c.net)or c.net

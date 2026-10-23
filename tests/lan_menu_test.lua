@@ -4,7 +4,7 @@ local S={chat={},peers={},scanLan=function()calls.scan=true;return true end,
  localGames=function()return hosts end,stopScan=function()calls.stop=true end,
  hostLan=function()calls.host=true;return true end,joinLan=function(a)calls.join=a;return true end}
 local stored
-local mod={storage={read=function()return {}end,write=function(_,k,v)stored=v end},world={game={input={isDown=function()return true end,wasPressed=function()return true end}}},events={on=function()end},hooks={wrap=function(_,k,f)hooks[k]=f end}}
+local mod;mod={storage={read=function()return {}end,write=function(_,g,k,v)assert(g==mod.game and k=='saved_servers');stored=v;return true end},game={input={isDown=function()return true end,wasPressed=function()return true end}},events={on=function()end},hooks={wrap=function(_,k,f)hooks[k]=f end}}
 local UI=dofile('lib/crossgen/ui.lua')(mod,S,{generation=3})
 local function key(k)hooks['input.key'](function()end,{}, {phase='pressed',key=k})end
 UI.show();key('return');assert(calls.host,'Host Local is not first/default action')
@@ -15,7 +15,7 @@ UI.textinput('example.net:7777');key('return');assert(calls.join=='example.net:7
 print('PASS one-action hosting, automatic join scan, selected host and direct-address flow')
 
 local function pad(button)
- local g=mod.world.game;g.input.pressQueue={button}
+ local g=mod.game;g.input.pressQueue={button}
  hooks['input.step'](function()end,g,.016)
  assert(#g.input.pressQueue==0,'menu leaked input into game')
 end
@@ -32,9 +32,9 @@ UI.show();pad('a');assert(UI.mode=='players');pad('down');pad('a');assert(UI.mod
 pad('a');assert(calls.kicked=='3','host kicked the wrong guest')
 print('PASS multiplayer roster selection and targeted kick')
 
-UI.show();hooks['input.step'](function()end,mod.world.game,.016)
-assert(not mod.world.game.input:isDown('up') and not mod.world.game.input:wasPressed('a'))
-UI.close();assert(not mod.world.game.input:isDown('up'),'close-frame input leaked')
-hooks['input.step'](function()end,mod.world.game,.016)
-assert(mod.world.game.input:isDown('up'),'closed menu retained game input')
+UI.show();hooks['input.step'](function()end,mod.game,.016)
+assert(not mod.game.input:isDown('up') and not mod.game.input:wasPressed('a'))
+UI.close();assert(not mod.game.input:isDown('up'),'close-frame input leaked')
+hooks['input.step'](function()end,mod.game,.016)
+assert(mod.game.input:isDown('up'),'closed menu retained game input')
 print('PASS held gameplay input blocked only during menu and close frame')

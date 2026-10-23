@@ -10,7 +10,7 @@ for generation=1,3 do
  local Objects={forDraw=function()return{}end};package.loaded['src.core.game3.objects']=Objects
  package.loaded['src.core.game3.ow_sprites']={playerGraphicsId=function()return 1 end,getDraw=function()return true end}
  package.loaded['src.mods.Gen3Compat']={worldBusy=function()return false end}
- local mod={world={game=g},exports={},log={info=function()end},events={on=function(_,_,f)f()end}}
+ local mod={game=g,exports={},log={info=function()end},events={on=function(_,_,f)f()end}}
  function mod:read(path)if path=='lib/crossgen/session.lua'then return'return function(m,l,a)captureAdapter(a);return{}end'end;return'return function()end'end
  dofile(generation==3 and'lib/gen3/init.lua'or'lib/gb/init.lua')(mod)
  local a=captured

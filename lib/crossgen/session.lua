@@ -4,7 +4,7 @@ return function(mod, loadLocal, adapter)
   local Native = require('src.link.Net')
   local Net = loadLocal('lib/crossgen/room_transport.lua')
   local SharedWorld = loadLocal('lib/crossgen/shared_world.lua')
-  local hostAddress=loadLocal('lib/crossgen/host_address.lua').new()
+  local hostAddress=loadLocal('lib/crossgen/host_address.lua').new(mod.fetch)
   local S = { connected = false, peers = {}, chat = {}, channels = {} }
   local discovery=loadLocal('lib/crossgen/discovery.lua').new(adapter.game,adapter.generation)
   local net, authority, client, provider, config, activities, lanPort

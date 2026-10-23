@@ -26,7 +26,7 @@ for _,version in ipairs({'ruby','sapphire','emerald','firered','leafgreen'})do f
  package.loaded['src.core.game3.link.trade']={reset=function()end}
  package.loaded['src.core.game3.battle']={isActive=function()return false end}
  package.loaded['src.ui.game3.link_trade_menu']={close=function()end}
- local A={};dofile('lib/gen3/link.lua')({world={game=game}},A)
+ local A={};dofile('lib/gen3/link.lua')({game=game},A)
  local sent;local transport={send=function(_,m)sent=m;return true end}
  assert(A.startActivity('single',transport,true,function(r)result=r end))
  local packet={type='setup',mode=1};assert(transport:send(packet));assert(sent.mode=='1' and packet.mode==1,'wire mode changed native enum or would be dropped')

@@ -29,7 +29,7 @@ return function(mod,adapter,TradeBarrier)
       if not TradeBarrier then return false,'Native trade coordinator unavailable' end
       transport=TradeBarrier.wrap(transport,host)
     end
-    local game=mod.world.game
+    local game=mod.game
     local kind=mode=='trade' and 0x1111 or mode=='double' and 0x2244 or 0x2233
     if mode~='trade'then
       local ok,why=LB.validateParty(game.session,mode=='double' and Link.USING.DOUBLE_BATTLE or Link.USING.SINGLE_BATTLE)

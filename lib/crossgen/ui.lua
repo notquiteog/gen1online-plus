@@ -2,29 +2,34 @@
 -- remain generation-native. It only consumes controls while explicitly open.
 return function(mod, session, adapter)
   local UI={open=false,selection=1,text='',mode='menu'}
-  local saved={}
-  if mod.storage and mod.storage.read then
-    local ok,value=pcall(mod.storage.read,mod.storage,'saved_servers')
-    if ok and type(value)=='table' then
-      for _,address in ipairs(value)do if type(address)=='string' and #address<=128 and #saved<32 then saved[#saved+1]=address end end
+  local saved={};local loadedServers=false
+  local function game()return mod.game end
+  local function loadServers()
+    if loadedServers or not game()or not(mod.storage and mod.storage.read)then return end
+    local ok,value,code=pcall(mod.storage.read,mod.storage,game(),'saved_servers')
+    if ok and(type(value)=='table'or code=='not_found')then
+      saved={};loadedServers=true
+      for _,address in ipairs(type(value)=='table'and value or{})do
+        if type(address)=='string'and #address<=128 and #saved<32 then saved[#saved+1]=address end
+      end
     end
   end
   local function saveServers()
-    if not(mod.storage and mod.storage.write)then return false,'Server storage unavailable' end
-    local ok,result,why=pcall(mod.storage.write,mod.storage,'saved_servers',saved)
-    if not ok or result==false or(result==nil and why~=nil)then return false,why or result end
+    if not(game()and mod.storage and mod.storage.write)then return false,'Server storage unavailable'end
+    local ok,result,why=pcall(mod.storage.write,mod.storage,game(),'saved_servers',saved)
+    if not ok or result~=true then return false,why or result end
     return true
   end
   local function menuMode()return UI.mode=='menu'or UI.mode=='join-list'or UI.mode=='server'or UI.mode=='players'or UI.mode=='peer' end
   local keys='1234567890abcdefghijklmnopqrstuvwxyz.-: <'
   UI.key=1
-  local function game()return mod.world.game end
   local function quietInput()
     local input=game() and game().input
     if input then input.state={};input.pressed={};input.pressQueue={};input.aliasHeld=nil end
   end
   function UI.close()if session.stopScan then session.stopScan()end;UI.open=false;UI.blockFrame=true;adapter.menuBusy=false;quietInput()end
   function UI.show(mode)
+    loadServers()
     UI.open=true;UI.mode=mode or 'menu';UI.text='';UI.selection=1;UI.error=nil;adapter.menuBusy=true;quietInput()
     if UI.mode=='join-list' and session.scanLan then local ok,why=session.scanLan();if not ok then UI.error=why end end
   end
@@ -153,7 +158,7 @@ return function(mod, session, adapter)
       if previous then return previous(self,text,...)end
     end
   end
-  mod.events:on('game.ready',function(ev)bind(ev and ev.game or game())end)
+  mod.events:on('game.ready',function(ev)loadedServers=false;bind(ev and ev.game or game())end)
   mod.hooks:wrap('input.step',function(nextFn,g,dt)
     bind(g);UI.blockFrame=false
     if session.activity and session.activity.status=='incoming' and not UI.open then UI.show()end

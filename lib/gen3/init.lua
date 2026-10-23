@@ -11,7 +11,7 @@ return function(mod)
   local Compat=require('src.mods.Gen3Compat')
   local adapter={generation=3,game=require('src.core.GameVersion').get()}
   local peers={}
-  local function game()return mod.world.game end
+  local function game()return mod.game end
   function adapter.position()
     local g=game()
     if not g or g.phase~='field' or not Map.current then return end

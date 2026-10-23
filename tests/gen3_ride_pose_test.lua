@@ -11,7 +11,7 @@ package.loaded['src.core.game3.ow_sprites']={playerGraphicsId=function()return 9
 package.loaded['src.core.game3.pokemon']={keyName=function(s)if s==131 then return 'LAPRAS'end end}
 package.loaded['src.mods.Gen3Compat']={worldBusy=function()return false end}
 _G.captureAdapter=function(a)adapter=a end
-local mod={world={game=game},exports={},log={info=function()end},find=function()return ride end}
+local mod={game=game,exports={},log={info=function()end},find=function()return ride end}
 function mod:read(path)
  if path=='lib/crossgen/session.lua' then return 'return function(mod,load,a) captureAdapter(a); return {} end'end
  return 'return function() end'

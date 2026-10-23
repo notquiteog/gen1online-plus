@@ -3,7 +3,7 @@ local native=0
 local Class={interact=function()native=native+1 end}
 package.loaded['src.world.OverworldController']=Class
 local game={input={}}
-local mod={world={game=game},events={on=function()end},hooks={wrap=function(_,name,fn)hooks[name]=fn end}}
+local mod={game=game,events={on=function()end},hooks={wrap=function(_,name,fn)hooks[name]=fn end}}
 local session={connected=true,peers={remote={map='town',x=1,y=0}},activity={status='active'}}
 local adapter={generation=2,position=function()return {map='town',x=0,y=0,facing='right'}end}
 local ui=dofile('lib/crossgen/ui.lua')(mod,session,adapter)

@@ -12,7 +12,7 @@ return function(mod,adapter)
   function adapter.startActivity(mode,transport,host,onDone)
     if current or doubleActive then return false,'Native link already active'end
     if mode=='double'then local ok,why=doubles.startActivity(mode,transport,host,onDone);doubleActive=ok;return ok,why end
-    local game=mod.world.game
+    local game=mod.game
     if not(game.save and game.save.party and #game.save.party>0)then return false,'No Pokemon in party'end
     if mode~='single'and mode~='trade'then return false,'Unsupported link mode'end
     local state=LinkState.newFromSession(game,transport,mode=='single'and'battle'or'trade',host)
@@ -39,7 +39,7 @@ return function(mod,adapter)
     if doubleActive then doubles.abortActivity();return end
     local c=current;if not c or c.done then current=nil;return end
     c.disconnected=true
-    local game=mod.world.game
+    local game=mod.game
     -- Let the native battle/trade state process its closed virtual transport;
     -- it owns party restoration and stack unwind, including a trade animation.
     if c.state.net then c.state.net:close()end

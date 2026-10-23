@@ -6,7 +6,7 @@ return function(mod)
   local peers={}
   local baseSprite
   local function rideAPI()local r=mod.find and mod.find("DRAMATIC_SKY_RIDE");return r and r.exports end
-  local function game()return mod.world.game end
+  local function game()return mod.game end
   local function world()local g=game();return g and (g.world or g.overworld)end
   mod.events:on('game.ready',function()local w=world();baseSprite=w and w.player and w.player.sprite end)
   function adapter.position()
